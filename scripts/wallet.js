@@ -63,7 +63,7 @@ class MasterKey {
 
     /**
      * @param {String} [path] - BIP32 path pointing to the address
-     * @return {String} Address
+     * @return {Promise<String>} Address
      * @abstract
      */
     async getAddress(path) {

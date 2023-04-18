@@ -1,9 +1,8 @@
-import { Mempool } from './mempool.js';
+import { Account } from './account.js';
 import Masternode from './masternode.js';
 import { ALERTS, start as i18nStart, translation } from './i18n.js';
 import * as jdenticon from 'jdenticon';
 import {
-    masterKey,
     hasEncryptedWallet,
     importWallet,
     encryptWallet,
@@ -311,8 +310,6 @@ function subscribeToNetworkEvents() {
     });
 }
 
-// WALLET STATE DATA
-export const mempool = new Mempool();
 let exportHidden = false;
 
 //                        PIVX Labs' Cold Pool
@@ -340,7 +337,7 @@ export function openTab(evt, tabName) {
         updateMasternodeTab();
     }
 }
-
+/* TODO: update UI with events
 export function getBalance(updateGUI = false) {
     const nBalance = mempool.getBalance();
     const nCoins = nBalance / COIN;
@@ -414,17 +411,21 @@ export function getStakingBalance(updateGUI = false) {
     }
 
     return nBalance;
-}
+    }
+*/
 
 export function selectMaxBalance(domValueInput, fCold = false) {
-    domValueInput.value = (fCold ? getStakingBalance() : getBalance()) / COIN;
-    // Update the Send menu's value (assumption: if it's not a Cold balance, it's probably for Sending!)
-    if (!fCold)
-        updateAmountInputPair(
-            doms.domSendAmountCoins,
-            doms.domSendAmountValue,
-            true
-        );
+    const account = Account.activeAccount;
+    if (account) {
+	domValueInput.value = (fCold ? account.getStakingBalance() : account.getBalance()) / COIN;
+	// Update the Send menu's value (assumption: if it's not a Cold balance, it's probably for Sending!)
+	if (!fCold)
+            updateAmountInputPair(
+		doms.domSendAmountCoins,
+		doms.domSendAmountValue,
+		true
+            );
+    }
 }
 
 /**
@@ -507,15 +508,16 @@ export async function updateStakingRewardsGUI() {
  * Open the Explorer in a new tab for the loaded master public key
  */
 export async function openExplorer() {
-    if (masterKey.isHD) {
-        const derivationPath = getDerivationPath(masterKey.isHardwareWallet)
+    const account = Account.activeAccount;
+    if (account?.masterKey?.isHD) {
+        const derivationPath = getDerivationPath(account.masterKey.isHardwareWallet)
             .split('/')
             .slice(0, 4)
             .join('/');
-        const xpub = await masterKey.getxpub(derivationPath);
+        const xpub = await account.masterKey.getxpub(derivationPath);
         window.open(cExplorer.url + '/xpub/' + xpub, '_blank');
     } else {
-        const address = await masterKey.getAddress();
+        const address = await account.masterKey.getAddress();
         window.open(cExplorer.url + '/address/' + address, '_blank');
     }
 }
@@ -751,15 +753,14 @@ async function govVote(hash, voteCode) {
  * @param {boolean} fRestart - Whether this is a Restart or a first Start
  */
 export async function startMasternode(fRestart = false) {
-    if (localStorage.getItem('masternode')) {
+    const account = Account.activeAccount;
+    if (account?.masternode) {
         if (
-            masterKey.isViewOnly &&
+            account.masterKey.isViewOnly &&
             !(await restoreWallet('Unlock to start your Masternode!'))
         )
             return;
-        const cMasternode = new Masternode(
-            JSON.parse(localStorage.getItem('masternode'))
-        );
+        const cMasternode = account.masternode;
         if (await cMasternode.start()) {
             createAlert(
                 'success',
@@ -779,9 +780,10 @@ export async function startMasternode(fRestart = false) {
 }
 
 export function destroyMasternode() {
-    if (localStorage.getItem('masternode')) {
-        localStorage.removeItem('masternode');
-        createAlert(
+    const masternode = Account.activeAccount?.masternode;
+    if (masternode) {
+	Account.activeAccount.masternode = null;
+	createAlert(
             'success',
             '<b>Masternode destroyed!</b><br>Your coins are now spendable.',
             5000
@@ -824,6 +826,10 @@ function parseIpAddress(ip) {
 }
 
 export async function importMasternode() {
+    const account = Account.activeAccount;
+    if (!account) {
+	return createAlert('warning', 'Import your account first');
+    }
     const mnPrivKey = doms.domMnPrivateKey.value;
     const address = parseIpAddress(doms.domMnIP.value);
     if (!address) {
@@ -839,15 +845,16 @@ export async function importMasternode() {
 
     if (!masterKey.isHD) {
         // Find the first UTXO matching the expected collateral size
-        const cCollaUTXO = mempool
-            .getConfirmed()
-            .find(
-                (cUTXO) => cUTXO.sats === cChainParams.current.collateralInSats
-            );
-
+        const cCollaUTXO = account
+	      .mempool
+              .getConfirmed()
+              .find(
+                  (cUTXO) => cUTXO.sats === cChainParams.current.collateralInSats
+              );
+	
         // If there's no valid UTXO, exit with a contextual message
         if (!cCollaUTXO) {
-            if (getBalance(false) < cChainParams.current.collateralInSats) {
+            if (account.getBalance() < cChainParams.current.collateralInSats) {
                 // Not enough balance to create an MN UTXO
                 createAlert(
                     'warning',
@@ -880,9 +887,10 @@ export async function importMasternode() {
         collateralPrivKeyPath = 'legacy';
     } else {
         const path = doms.domMnTxId.value;
-        const masterUtxo = mempool
-            .getConfirmed()
-            .findLast((u) => u.path === path); // first UTXO for each address in HD
+        const masterUtxo = account
+	      .mempool
+              .getConfirmed()
+              .findLast((u) => u.path === path); // first UTXO for each address in HD
         // sanity check:
         if (masterUtxo.sats !== cChainParams.current.collateralInSats) {
             return createAlert(
@@ -1442,8 +1450,9 @@ export async function updateMasternodeTab() {
     doms.domAccessMasternode.style.display = 'none';
     doms.domCreateMasternode.style.display = 'none';
     doms.domMnDashboard.style.display = 'none';
+    const account = Account.activeAccount;
 
-    if (!masterKey) {
+    if (!account) {
         doms.domMnTextErrors.innerHTML =
             'Please ' +
             (hasEncryptedWallet() ? 'unlock' : 'import') +
@@ -1451,7 +1460,7 @@ export async function updateMasternodeTab() {
         return;
     }
 
-    if (!mempool.getConfirmed().length) {
+    if (!account.mempool.getConfirmed().length) {
         doms.domMnTextErrors.innerHTML =
             'Your wallet is empty or still loading, re-open the tab in a few seconds!';
         return;
@@ -1462,7 +1471,7 @@ export async function updateMasternodeTab() {
     if (strMasternodeJSON) {
         const cMasternode = JSON.parse(strMasternodeJSON);
         if (
-            !mempool
+            !account.mempool
                 .getConfirmed()
                 .find((utxo) => isMasternodeUTXO(utxo, cMasternode))
         ) {
@@ -1481,12 +1490,12 @@ export async function updateMasternodeTab() {
             doms.masternodeLegacyAccessText;
         doms.domMnTxId.style.display = 'none';
         // Find the first UTXO matching the expected collateral size
-        const cCollaUTXO = mempool
+        const cCollaUTXO = account.mempool
             .getConfirmed()
             .find(
                 (cUTXO) => cUTXO.sats === cChainParams.current.collateralInSats
             );
-        const balance = getBalance(false);
+        const balance = account.getBalance();
         if (cCollaUTXO) {
             if (strMasternodeJSON) {
                 const cMasternode = new Masternode(
@@ -1521,7 +1530,7 @@ export async function updateMasternodeTab() {
         const mapCollateralAddresses = new Map();
 
         // Aggregate all valid Masternode collaterals into a map of Address <--> Collateral
-        for (const cUTXO of mempool.getConfirmed()) {
+        for (const cUTXO of account.mempool.getConfirmed()) {
             if (cUTXO.sats !== cChainParams.current.collateralInSats) continue;
             mapCollateralAddresses.set(cUTXO.path, cUTXO);
         }
