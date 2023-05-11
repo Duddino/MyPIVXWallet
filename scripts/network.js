@@ -52,6 +52,9 @@ export class Network {
         return bytes * 50; // 50 sat/byte
     }
 
+    /**
+     * @returns {Number} cached block count
+     */
     get cachedBlockCount() {
         throw new Error('cachedBlockCount must be implemented');
     }
@@ -76,7 +79,7 @@ export class Network {
         this.masterKey = masterKey;
     }
 
-    async getTxInfo(_txHash) {
+    getTxInfo(_txHash) {
         throw new Error('getTxInfo must be implemented');
     }
 }

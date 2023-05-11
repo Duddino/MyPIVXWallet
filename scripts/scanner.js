@@ -12,14 +12,14 @@ let scanner = null;
 
 /**
  * Asynchronously prompt a QR code scan, returning the QR string data on resolve or a `false` rejection on cancel or error
- * @returns {Promise<string> | false} - QR String data | false
+ * @returns {Promise<QrScanner.ScanResult | false>} - QR String data | false
  */
 export async function scanQRCode() {
     // Don't create multiple scanners; in case of button spam
     if (scanner) return false;
 
     // Check for Camera support
-    if (!QrScanner.hasCamera()) {
+    if (!(await QrScanner.hasCamera())) {
         createAlert('warning', ALERTS.NO_CAMERAS, [], 3000);
         return false;
     }
@@ -50,13 +50,13 @@ export async function scanQRCode() {
             .catch((err) => {
                 createAlert('warning', err, 2500);
                 stopQRScan();
-                resolve();
+                resolve(false);
             });
 
         // If the close button is clicked, shutdown the scanner and destroy it to free memory
         doms.domCloseQrReaderBtn.addEventListener('click', () => {
             stopQRScan();
-            resolve();
+            resolve(false);
         });
     });
 }

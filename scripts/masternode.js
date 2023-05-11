@@ -5,6 +5,7 @@ import {
     parseWIF,
     deriveAddress,
     cHardwareWallet,
+    HardwareWalletMasterKey,
 } from './wallet.js';
 import { dSHA256, bytesToHex, hexToBytes } from './utils.js';
 import { Buffer } from 'buffer';
@@ -13,22 +14,23 @@ import * as nobleSecp256k1 from '@noble/secp256k1';
 import { OP } from './script.js';
 import bs58 from 'bs58';
 
-/**
- * Construct a Masternode
- * @param {string} [masternode.walletPrivateKeyPath] - BIP39 path pointing to the private key holding the collateral. Optional if not HD
- * @param {string} masternode.mnPrivateKey - Masternode private key. Must be uncompressed WIF
- * @param {string} masternode.collateralTxId - Must be a UTXO pointing to the collateral
- * @param {number} masternode.outidx - The output id of the collateral starting from 0
- * @param {string} masternode.addr - IPV4 address in the form `ip:port`
- */
 export default class Masternode {
+    /**
+     * Construct a Masternode
+     * @param {Object} masternode
+     * @param {string} [masternode.walletPrivateKeyPath] - BIP39 path pointing to the private key holding the collateral. Optional if not HD
+     * @param {string} masternode.mnPrivateKey - Masternode private key. Must be uncompressed WIF
+     * @param {string} masternode.collateralTxId - Must be a UTXO pointing to the collateral
+     * @param {number} masternode.outidx - The output id of the collateral starting from 0
+     * @param {string} masternode.addr - IPV4 address in the form `ip:port`
+     */
     constructor({
         walletPrivateKeyPath,
         mnPrivateKey,
         collateralTxId,
         outidx,
         addr,
-    } = {}) {
+    }) {
         this.walletPrivateKeyPath = walletPrivateKeyPath;
         this.mnPrivateKey = mnPrivateKey;
         this.collateralTxId = collateralTxId;
@@ -36,7 +38,7 @@ export default class Masternode {
         this.addr = addr;
     }
     /**
-     * @type {[string, number]} array of vote hash and corresponding vote for the current session
+     * @type {[string, number][]} array of vote hash and corresponding vote for the current session
      */
     static sessionVotes = [];
 
@@ -75,20 +77,26 @@ export default class Masternode {
 
     /**
      * @param {String} ip
-     * @param {Number} port
+     * @param {String} port
      * @returns {string} hex representation of the IP + port pair
      */
     static _decodeIpAddress(ip, port) {
         const address = ip.includes('.')
             ? Address6.fromAddress4(ip)
             : new Address6(ip);
+        const portNumber = parseInt(port);
         const bytes = address.toUnsignedByteArray();
         const res =
             bytesToHex([...new Array(16 - bytes.length).fill(0), ...bytes]) +
-            bytesToHex(Masternode._numToBytes(port, 2, false));
+            bytesToHex(Masternode._numToBytes(portNumber, 2, false));
         return res;
     }
 
+    /**
+     * @param {Number} number - Number to convert
+     * @param {Number} [numBytes] - Number of bytes to use
+     * @param {Boolean} [littleEndian] - True for little endian encoding, false for big endian
+     */
     static _numToBytes(number, numBytes = 8, littleEndian = true) {
         const bytes = [];
         for (let i = 0; i < numBytes; i++) {
@@ -99,11 +107,12 @@ export default class Masternode {
 
     /**
      * @param {Object} message - message to encode
+     * @param {Object} message.vin
      * @param {string} message.vin.txid - transaction id of the collateral
      * @param {number} message.vin.idx - output id of the collateral starting from 0
      * @param {string} message.blockHash - latest blockhash
      * @param {number} message.sigTime - current time in seconds since UNIX epoch
-     * @return {Array} Returns the unsigned ping message. It needs to be signed with the MN private key
+     * @return {Uint8Array} Returns the unsigned ping message. It needs to be signed with the MN private key
      */
     static getPingSignature({ vin, blockHash, sigTime }) {
         const ping = [
@@ -119,7 +128,7 @@ export default class Masternode {
 
     /**
      * @param {Object} message - Message to encode
-     * @param {string} message.walletPrivateKey - private key of the collateral
+     * @param {Uint8Array | Number[]} message.publicKey - public key of the collateral
      * @param {string} message.addr - Masternode ipv4 with port
      * @param {string} message.mnPrivateKey - private key of masternode
      * @param {number} message.sigTime - current time in seconds since UNIX epoch
@@ -171,7 +180,7 @@ export default class Masternode {
     }
 
     /**
-     * @return {Promise<string>} The signed message signed with the collateral private key
+     * @return {Promise<Array<Number>>} The signed message signed with the collateral private key
      */
     async getSignedMessage(sigTime) {
         const toSign = Masternode.getToSign({
@@ -206,7 +215,7 @@ export default class Masternode {
         }
     }
     /**
-     * @return {Promise<string>} The signed ping message signed with the masternode private key
+     * @return {Promise<Array<Number>>} The signed ping message signed with the masternode private key
      */
     async getSignedPingMessage(sigTime, blockHash) {
         const toSign = Masternode.getPingSignature({
@@ -226,7 +235,7 @@ export default class Masternode {
     }
 
     async getWalletPublicKey() {
-        if (masterKey.isHardwareWallet) {
+        if (masterKey instanceof HardwareWalletMasterKey) {
             return hexToBytes(
                 await masterKey.getPublicKey(this.walletPrivateKeyPath)
             );
@@ -266,7 +275,6 @@ export default class Masternode {
             deriveAddress({
                 pkBytes: parseWIF(this.mnPrivateKey, true),
                 output: 'UNCOMPRESSED_HEX',
-                compress: false,
             })
         );
 
@@ -310,7 +318,7 @@ export default class Masternode {
 
     /**
      * Start the masternode
-     * @return {Promise<bool>} Whether or not the message was relayed successfully. This does not necessarely mean
+     * @return {Promise<Boolean>} Whether or not the message was relayed successfully. This does not necessarely mean
      * starting was successful, but only that the node was able to decode the broadcast.
      */
     async start() {
@@ -323,10 +331,10 @@ export default class Masternode {
     /**
      *
      * @param {object} options
-     * @param {bool} options.fAllowFinished - Pass `true` to stop filtering proposals if finished
-     * @return {Promise<Array<object>} A list of currently active proposal
+     * @param {Boolean} [options.fAllowFinished] - Pass `true` to stop filtering proposals if finished
+     * @return {Promise<Array<object>>} A list of currently active proposal
      */
-    static async getProposals({ fAllowFinished = false } = {}) {
+    static async getProposals({ fAllowFinished = false }) {
         const url = `${cNode.url}/getbudgetinfo`;
         let arrProposals = await (await fetch(url)).json();
 
@@ -397,6 +405,9 @@ export default class Masternode {
      * @param {number} voteCode - the vote code. "Yes" is 1, "No" is 2
      */
     storeVote(hash, voteCode) {
+        /**
+         * @type {[String, Number]}
+         */
         const newVote = [hash, voteCode];
         const index = Masternode.sessionVotes.findIndex(
             ([vHash]) => vHash === hash
@@ -482,7 +493,7 @@ export default class Masternode {
      * @param {String} options.address - Base58 encoded PIVX address
      * @param {Number} options.monthlyPayment - Payment amount per cycle in satoshi
      * @param {String} options.txid - Transaction id of the proposal fee
-     * @returns {Promise<boolean>} If the finalization happened without errors
+     * @returns {Promise<{ok: boolean, err: String?}>} If the finalization happened without errors
      */
     static async finalizeProposal({
         name,
@@ -505,7 +516,7 @@ export default class Masternode {
             ).text();
 
             if (/^"[a-f0-9]"$/ && res.length == 64 + 2) {
-                return { ok: true };
+                return { ok: true, err: null };
             } else if (
                 res.includes('is unconfirmed') ||
                 res.includes('requires at least')
@@ -536,14 +547,14 @@ export default class Masternode {
      * @param {Number} options.start - Superblock of when the proposal is going to start
      * @param {String} options.address - Base58 encoded PIVX address
      * @param {Number} options.monthlyPayment - Payment amount per cycle in satoshi
-     * @returns {boolean} If the proposal is valid
+     * @returns {{ok: boolean, err: String?}} If the proposal is valid
      */
     static isValidProposal({
         name,
         url,
         nPayments,
-        _start,
-        _address,
+        start,
+        address,
         monthlyPayment,
     }) {
         const isSafeStr = /^[a-z0-9 .,;\-_/:?@()]+$/i;
@@ -586,6 +597,6 @@ export default class Masternode {
         }
         // No need to validate start or address as they're generated by MPW
 
-        return { ok: true };
+        return { ok: true, err: null };
     }
 }

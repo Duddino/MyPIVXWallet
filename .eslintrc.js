@@ -12,6 +12,8 @@ module.exports = {
     parserOptions: {
         ecmaVersion: 'latest',
         sourceType: 'module',
+        project: "tsconfig.json",
+        tsconfigRootDir: __dirname,
     },
     plugins: ['@typescript-eslint'],
     rules: {
@@ -24,5 +26,7 @@ module.exports = {
         'no-empty': ['error', { allowEmptyCatch: true }],
         'no-constant-condition': 'off',
         '@typescript-eslint/no-empty-function': 'off',
+        '@typescript-eslint/no-floating-promises': 'error',
+        '@typescript-eslint/ban-ts-comment': 'off',
     },
 };

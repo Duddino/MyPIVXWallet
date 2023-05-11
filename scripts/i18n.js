@@ -1,7 +1,15 @@
+// @ts-ignore
 import { en_translation } from '../locale/en/translation.js';
+// @ts-ignore
 import { uwu_translation } from '../locale/uwu/translation.js';
 
+/**
+ * @type {any}
+ */
 export const ALERTS = {};
+/**
+ * @type {any}
+ */
 export let translation = {};
 
 // TRANSLATION
@@ -35,7 +43,7 @@ export function switchTranslation(langName) {
 /**
  * Takes a string that includes {x} and replaces that based on what is in the array of objects
  * @param {string} message
- * @param {array<Object>} variables
+ * @param {Array<Object>} variables
  * @returns a string with the variables implemented in the string
  *
  * @example
@@ -54,27 +62,30 @@ export function translateAlerts(message, variables) {
 
 /**
  * Translates all the static html based on the tag data-i18n
- * @param {Array} i18nLangs
+ * @param {Array<any>} i18nLangs
  *
  */
 export function translate(i18nLangs) {
     if (!i18nLangs) return;
 
     document.querySelectorAll('[data-i18n]').forEach(function (element) {
-        if (!i18nLangs[element.dataset.i18n]) return;
+        if (element instanceof HTMLElement) {
+            if (!i18nLangs[element.dataset.i18n]) return;
 
-        if (element.dataset.i18n_target) {
-            element[element.dataset.i18n_target] =
-                i18nLangs[element.dataset.i18n];
-        } else {
-            switch (element.tagName.toLowerCase()) {
-                case 'input':
-                case 'textarea':
-                    element.placeholder = i18nLangs[element.dataset.i18n];
-                    break;
-                default:
-                    element.innerHTML = i18nLangs[element.dataset.i18n];
-                    break;
+            if (element.dataset.i18n_target) {
+                element[element.dataset.i18n_target] =
+                    i18nLangs[element.dataset.i18n];
+            } else {
+                switch (element.tagName.toLowerCase()) {
+                    case 'input':
+                    case 'textarea':
+                        // @ts-ignore
+                        element.placeholder = i18nLangs[element.dataset.i18n];
+                        break;
+                    default:
+                        element.innerHTML = i18nLangs[element.dataset.i18n];
+                        break;
+                }
             }
         }
     });
@@ -114,6 +125,7 @@ export function start() {
     const arrLangsWithSubset = ['en'];
 
     const strLang = parseUserAgentLang(
+        // @ts-ignore
         window.navigator.userLanguage || window.navigator.language,
         arrLangsWithSubset
     );
