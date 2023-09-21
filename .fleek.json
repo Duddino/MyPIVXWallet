@@ -1,7 +1,7 @@
 {
- "build": {
-   "command": "npm install && npm run build",
-     "publicDir": "dist",
-     "image": "node:lts"
+    "build": {
+	"image": "node:lts",
+	"command": "echo hi",
+	"publicDir": "dist"
  }
 }
