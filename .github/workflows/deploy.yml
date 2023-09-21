@@ -16,6 +16,7 @@ jobs:
   test-deploy:
     runs-on: ubuntu-latest
     name: A job to test the action-deploy action by deploying a test site
+    workDir: .
     steps:
       - uses: actions/checkout@v2
       - name: Deploy test site
