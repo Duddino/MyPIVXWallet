@@ -23,7 +23,7 @@ jobs:
         with:
           node-version: '18.x'
       - run: npm ci
-      - run: npm build
+      - run: npm run build
       - name: deploy to IPFS
         uses: aquiladev/ipfs-action@master
         with:
