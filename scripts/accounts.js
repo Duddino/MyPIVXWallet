@@ -1,4 +1,4 @@
-import { Contact } from './contacts-book';
+import { Contact } from './contacts-book'; // import
 
 /**
  * A local Account, containing sensitive user-data
