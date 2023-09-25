@@ -24,11 +24,8 @@ jobs:
           node-version: '18.x'
       - run: npm ci
       - run: npm run build
-      - name: deploy to IPFS
-        uses: aquiladev/ipfs-action@master
+      - name: deploy preview
+        uses: rossjrw/pr-preview-action@v1
         with:
-          path: ./dist
-          service: pinata
-          pinataKey: ${{ secrets.PINATA_KEY }}
-          pinataSecret: ${{ secrets.PINATA_SECRET }}
+          source-dir: ./dist/
           
