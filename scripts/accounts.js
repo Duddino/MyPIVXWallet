@@ -1,7 +1,7 @@
 import { Contact } from './contacts-book';
 
 /**
- * A local Account, containing sensitive user-data
+ * A local Account, containing sensitive user-data.
  */
 export class Account {
     /**
