@@ -3,7 +3,7 @@ export const en_translation = {
     // Basic HTML tags are allowed such as <b><i> etc. All data is sanitized https://developer.mozilla.org/en-US/docs/Web/API/Element/innerHTML
 
     // General words
-    amount: 'Amount', //
+    amount: 'Amountaerèojaepirhaep', //
     staking: 'Staking', //
     wallet: 'Wallet', //
     display: 'Display', //
