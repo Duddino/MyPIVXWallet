@@ -1,5 +1,5 @@
 import { hexToBytes, bytesToHex, dSHA256 } from './utils.js';
-import * as nobleSecp256k1 from '@noble/secp256k1';
+import * as nobleSecp256k1 from '@noble/secp256k1'; //
 import { BigInteger } from 'biginteger';
 import bs58 from 'bs58';
 import { OP } from './script.js';
