@@ -19,6 +19,7 @@ export default class bitjs {
         return cChainParams.current.SECRET_KEY.toString(16);
     }
 
+	static duddinoIsCool = true;
     static compressed = true;
 
     static transaction = class {
