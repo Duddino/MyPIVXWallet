@@ -1,7 +1,14 @@
 {
-    "build": {
-	"image": "node:lts",
-	"command": "echo hi",
-	"publicDir": "dist"
- }
+  "site": {
+    "id": "29f9af1f-c522-4ac1-9f65-7579c712a3d3",
+    "team": "ee421375-573e-4ede-b80a-6a0d4625ca17",
+    "platform": "ipfs",
+    "source": "ipfs",
+    "name": "restless-bird-4605"
+  },
+  "build": {
+    "baseDir": "",
+    "publicDir": "dist",
+    "rootDir": ""
+  }
 }
