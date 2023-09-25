@@ -80,5 +80,9 @@
   },
   "alias": {
     "@ledgerhq/devices": "@ledgerhq/devices/lib-es"
-  }
+  },
+    "browser": {
+    "crypto": false
+}
+
 }
