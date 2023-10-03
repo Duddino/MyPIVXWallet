@@ -1,6 +1,6 @@
-import { getBalance } from './global';
-import { isEmpty } from './misc';
-import { cMarket, fillCurrencySelect } from './settings';
+import { getEventEmitter } from './event_bus.js';
+import { isEmpty } from './misc.js';
+import { cMarket, fillCurrencySelect } from './settings.js';
 
 /**
  * CoinGecko's endpoint for PIVX data, optimised for least bandwidth
@@ -86,6 +86,6 @@ export async function refreshPriceDisplay() {
         await fillCurrencySelect();
 
         // Update price values
-        getBalance(true);
+        getEventEmitter().emit('balance-update');
     }
 }
