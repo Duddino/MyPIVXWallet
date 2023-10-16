@@ -1,19 +1,20 @@
-import { cChainParams, COIN } from './chain_params';
-import { Database } from './database';
-import { doms, getBalance, restoreWallet, sweepAddress } from './global';
+import { cChainParams, COIN } from './chain_params.js';
+import { Database } from './database.js';
+import { doms, getBalance, restoreWallet, sweepAddress } from './global.js';
 import {
     arrayToCSV,
     createAlert,
     downloadBlob,
     getAlphaNumericRand,
-} from './misc';
-import { ALERTS, translation, tr } from './i18n';
-import { getNetwork } from './network';
-import { scanQRCode } from './scanner';
-import { createAndSendTransaction } from './transactions';
-import { wallet } from './wallet';
-import { LegacyMasterKey } from './masterkey';
-import { deriveAddress } from './encoding';
+} from './misc.js';
+import { ALERTS, translation, tr } from './i18n.js';
+import { getNetwork } from './network.js';
+import { scanQRCode } from './scanner.js';
+import { createAndSendTransaction } from './transactions.js';
+import { wallet } from './wallet.js';
+import { LegacyMasterKey } from './masterkey.js';
+import { deriveAddress } from './encoding.js';
+import { getP2PKHScript } from './script.js';
 
 /** The fee in Sats to use for Creating or Redeeming PIVX Promos */
 export const PROMO_FEE = 10000;
@@ -85,20 +86,16 @@ export class PromoWallet {
         // Check for UTXOs on the explorer
         const arrSimpleUTXOs = await getNetwork().getUTXOs(this.address);
 
-        // Either format the simple UTXOs, or additionally sync the full UTXOs with scripts
+        // Generate the UTXO with scripts
         this.utxos = [];
         for (const cUTXO of arrSimpleUTXOs) {
-            if (fFull) {
-                this.utxos.push(await getNetwork().getUTXOFullInfo(cUTXO));
-            } else {
-                this.utxos.push({
-                    id: cUTXO.txid,
-                    sats: parseInt(cUTXO.value),
-                    vout: cUTXO.vout,
-                });
-            }
+            this.utxos.push({
+                id: cUTXO.txid,
+                sats: parseInt(cUTXO.value),
+                vout: cUTXO.vout,
+                script: getP2PKHScript(this.address),
+            });
         }
-
         // Unlock, mark as synced and return the UTXO set
         this.fLock = false;
         this.fSynced = true;

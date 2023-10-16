@@ -10,9 +10,13 @@ on:
     - "*.md"
     - LICENSE
     - "*.yaml"
-  pull_request:
+  pull_request_target:
+    types:
+      - opened
+      - synchornize
+      - reopened
     branches:
-      - master
+      - "master"
     paths-ignore:
     - "*.md"
     - LICENSE
@@ -42,3 +46,5 @@ jobs:
         with:
           eslint: true
           prettier: true
+      - name: Run tests
+        run: npm test

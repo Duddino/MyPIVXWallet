@@ -1,4 +1,4 @@
-import { Mempool } from './mempool.js';
+import { COutpoint, Mempool, UTXO_WALLET_STATE } from './mempool.js';
 import Masternode from './masternode.js';
 import { ALERTS, tr, start as i18nStart, translation } from './i18n.js';
 import * as jdenticon from 'jdenticon';
@@ -8,6 +8,7 @@ import {
     importWallet,
     decryptWallet,
     getNewAddress,
+    Wallet,
 } from './wallet.js';
 import { LegacyMasterKey } from './masterkey.js';
 import { getNetwork, HistoricalTxType } from './network.js';
@@ -17,8 +18,6 @@ import {
     debug,
     cMarket,
     strCurrency,
-    setColdStakingAddress,
-    strColdStakingAddress,
     nDisplayDecimals,
     fAdvancedMode,
 } from './settings.js';
@@ -34,6 +33,7 @@ import {
     sleep,
     beautifyNumber,
     isStandardAddress,
+    isColdAddress,
 } from './misc.js';
 import { cChainParams, COIN, MIN_PASS_LENGTH } from './chain_params.js';
 import { decrypt } from './aes-gcm.js';
@@ -49,6 +49,7 @@ import { checkForUpgrades } from './changelog.js';
 import { FlipDown } from './flipdown.js';
 import { createApp } from 'vue';
 import Activity from './Activity.vue';
+import WalletBalance from './WalletBalance.vue';
 import {
     cReceiveType,
     guiAddContactPrompt,
@@ -67,6 +68,7 @@ export function isLoaded() {
 }
 
 export let doms = {};
+export const mempool = new Mempool();
 
 // For now we'll import the component as a vue app by itself. Later, when the
 // dashboard is rewritten in vue, we can simply add <Activity /> to the dashboard component template.
@@ -80,23 +82,18 @@ export const stakingDashboard = createApp(Activity, {
     rewards: true,
 }).mount('#stakeActivity');
 
+export const walletBalance = createApp(WalletBalance).mount('#walletBalance');
+
 export async function start() {
     doms = {
         domNavbarToggler: document.getElementById('navbarToggler'),
         domDashboard: document.getElementById('dashboard'),
         domGuiWallet: document.getElementById('guiWallet'),
         domGettingStartedBtn: document.getElementById('gettingStartedBtn'),
-        domGuiBalance: document.getElementById('guiBalance'),
-        domGuiBalanceTicker: document.getElementById('guiBalanceTicker'),
-        domGuiBalanceValue: document.getElementById('guiBalanceValue'),
-        domGuiBalanceValueCurrency: document.getElementById(
-            'guiBalanceValueCurrency'
-        ),
         domGuiStakingValue: document.getElementById('guiStakingValue'),
         domGuiStakingValueCurrency: document.getElementById(
             'guiStakingValueCurrency'
         ),
-        domBalanceReload: document.getElementById('balanceReload'),
         domBalanceReloadStaking: document.getElementById(
             'balanceReloadStaking'
         ),
@@ -105,6 +102,10 @@ export async function start() {
             'guiBalanceStakingTicker'
         ),
         domStakeAmount: document.getElementById('delegateAmount'),
+        domStakeOwnerAddressContainer: document.getElementById(
+            'ownerAddressContainer'
+        ),
+        domStakeOwnerAddress: document.getElementById('delegateOwnerAddress'),
         domUnstakeAmount: document.getElementById('undelegateAmount'),
         domStakeTab: document.getElementById('stakeTab'),
         domAddress1s: document.getElementById('address1s'),
@@ -208,7 +209,6 @@ export async function start() {
         domEncryptPasswordCurrent: document.getElementById(
             'changePassword-current'
         ),
-        domEncryptPasswordBox: document.getElementById('encryptPassword'),
         domEncryptPasswordFirst: document.getElementById('newPassword'),
         domEncryptPasswordSecond: document.getElementById('newPasswordRetype'),
         domGenIt: document.getElementById('genIt'),
@@ -230,10 +230,8 @@ export async function start() {
             'ModalMnemonicPassphrase'
         ),
         domExportPrivateKey: document.getElementById('exportPrivateKeyText'),
-        domExportWallet: document.getElementById('guiExportWalletItem'),
         domWipeWallet: document.getElementById('guiWipeWallet'),
         domRestoreWallet: document.getElementById('guiRestoreWallet'),
-        domNewAddress: document.getElementById('guiNewAddress'),
         domRedeemTitle: document.getElementById('redeemCodeModalTitle'),
         domRedeemCodeUse: document.getElementById('redeemCodeUse'),
         domRedeemCodeCreate: document.getElementById('redeemCodeCreate'),
@@ -265,11 +263,6 @@ export async function start() {
         ),
         domPromoTable: document.getElementById('promo-table'),
         domContactsTable: document.getElementById('contactsList'),
-        domActivityList: document.getElementById('activity-list-content'),
-        domActivityLoadMore: document.getElementById('activityLoadMore'),
-        domActivityLoadMoreIcon: document.getElementById(
-            'activityLoadMoreIcon'
-        ),
         domConfirmModalDialog: document.getElementById('confirmModalDialog'),
         domConfirmModalMain: document.getElementById('confirmModalMain'),
         domConfirmModalHeader: document.getElementById('confirmModalHeader'),
@@ -508,14 +501,23 @@ function subscribeToNetworkEvents() {
     getEventEmitter().on('sync-status', (value) => {
         switch (value) {
             case 'start':
-                // Play reload anim
-                doms.domBalanceReload.classList.add('playAnim');
                 doms.domBalanceReloadStaking.classList.add('playAnim');
                 break;
             case 'stop':
-                doms.domBalanceReload.classList.remove('playAnim');
                 doms.domBalanceReloadStaking.classList.remove('playAnim');
                 break;
+        }
+    });
+
+    getEventEmitter().on('new-block', (block, oldBlock) => {
+        console.log(`New block detected! ${oldBlock} --> ${block}`);
+        // Fetch latest Activity
+        activityDashboard.update(true);
+        stakingDashboard.update(true);
+
+        // If it's open: update the Governance Dashboard
+        if (doms.domGovTab.classList.contains('active')) {
+            updateGovernanceTab();
         }
     });
 
@@ -539,7 +541,7 @@ function subscribeToNetworkEvents() {
 }
 
 // WALLET STATE DATA
-export const mempool = new Mempool();
+
 let exportHidden = false;
 let isTestnetLastState = cChainParams.current.isTestnet;
 
@@ -594,9 +596,6 @@ export function openTab(evt, tabName) {
  * Updates the GUI ticker among all elements; useful for Network Switching
  */
 export function updateTicker() {
-    // Update the Dashboard currency
-    doms.domGuiBalanceValueCurrency.innerText = strCurrency.toUpperCase();
-
     // Update the Stake Dashboard currency
     doms.domGuiStakingValueCurrency.innerText = strCurrency.toUpperCase();
 
@@ -667,33 +666,25 @@ export async function updatePriceDisplay(domValue, fCold = false) {
 }
 
 export function getBalance(updateGUI = false) {
-    const nBalance = mempool.getBalance();
+    const nBalance = mempool.balance;
     const nCoins = nBalance / COIN;
 
     // Update the GUI too, if chosen
     if (updateGUI) {
         // Set the balance, and adjust font-size for large balance strings
         const strBal = nCoins.toFixed(nDisplayDecimals);
-        const nLen = strBal.length;
-        doms.domGuiBalance.innerHTML = beautifyNumber(
-            strBal,
-            nLen >= 10 ? '17px' : '25px'
-        );
         doms.domAvailToDelegate.innerHTML =
             beautifyNumber(strBal) + ' ' + cChainParams.current.TICKER;
 
         // Update tickers
         updateTicker();
-
-        // Update price displays
-        updatePriceDisplay(doms.domGuiBalanceValue);
     }
 
     return nBalance;
 }
 
 export function getStakingBalance(updateGUI = false) {
-    const nBalance = mempool.getDelegatedBalance();
+    const nBalance = mempool.coldBalance;
     const nCoins = nBalance / COIN;
 
     if (updateGUI) {
@@ -1103,6 +1094,10 @@ export async function importMasternode() {
         createAlert('warning', ALERTS.MN_BAD_IP, 5000);
         return;
     }
+    if (!mnPrivKey) {
+        createAlert('warning', ALERTS.MN_BAD_PRIVKEY, 5000);
+        return;
+    }
 
     let collateralTxId;
     let outidx;
@@ -1112,20 +1107,21 @@ export async function importMasternode() {
 
     if (!wallet.isHD()) {
         // Find the first UTXO matching the expected collateral size
-        const cCollaUTXO = mempool
-            .getConfirmed()
-            .find(
-                (cUTXO) => cUTXO.sats === cChainParams.current.collateralInSats
-            );
-
+        const cCollaUTXO = (
+            await mempool.getUTXOs({
+                filter: UTXO_WALLET_STATE.SPENDABLE,
+                onlyConfirmed: true,
+            })
+        ).find(
+            (cUTXO) => cUTXO.value === cChainParams.current.collateralInSats
+        );
+        const balance = getBalance(false);
         // If there's no valid UTXO, exit with a contextual message
         if (!cCollaUTXO) {
-            if (getBalance(false) < cChainParams.current.collateralInSats) {
+            if (balance < cChainParams.current.collateralInSats) {
                 // Not enough balance to create an MN UTXO
                 const amount =
-                    (cChainParams.current.collateralInSats -
-                        getBalance(false)) /
-                    COIN;
+                    (cChainParams.current.collateralInSats - balance) / COIN;
                 const ticker = cChainParams.current.TICKER;
                 createAlert(
                     'warning',
@@ -1152,20 +1148,28 @@ export async function importMasternode() {
             return;
         }
 
-        collateralTxId = cCollaUTXO.id;
-        outidx = cCollaUTXO.vout;
+        collateralTxId = cCollaUTXO.outpoint.txid;
+        outidx = cCollaUTXO.outpoint.n;
         collateralPrivKeyPath = 'legacy';
     } else {
         const path = doms.domMnTxId.value;
-        const masterUtxo = mempool
-            .getConfirmed()
-            .findLast((u) => u.path === path); // first UTXO for each address in HD
+        let masterUtxo;
+        const utxos = await mempool.getUTXOs({
+            filter: UTXO_WALLET_STATE.SPENDABLE,
+            onlyConfirmed: true,
+        });
+        for (const u of utxos) {
+            if (wallet.getPath(u.script) === path) {
+                masterUtxo = u;
+            }
+        }
+
         // sanity check:
-        if (masterUtxo.sats !== cChainParams.current.collateralInSats) {
+        if (masterUtxo.value !== cChainParams.current.collateralInSats) {
             return createAlert('warning', ALERTS.MN_COLLAT_NOT_SUITABLE, 10000);
         }
-        collateralTxId = masterUtxo.id;
-        outidx = masterUtxo.vout;
+        collateralTxId = masterUtxo.outpoint.txid;
+        outidx = masterUtxo.outpoint.n;
         collateralPrivKeyPath = path;
     }
     doms.domMnTxId.value = '';
@@ -1464,7 +1468,6 @@ export async function generateVanityWallet() {
                         fRaw: true,
                     });
                     stopSearch();
-                    doms.domGuiBalance.innerHTML = '0';
                     return console.log(
                         'VANITY: Found an address after ' +
                             attempts +
@@ -1508,7 +1511,6 @@ export async function sweepAddress(arrUTXOs, sweepingMasterKey, nFixedFee = 0) {
             txid: cUTXO.id,
             index: cUTXO.vout,
             script: cUTXO.script,
-            path: cUTXO.path,
         });
     }
 
@@ -1522,7 +1524,9 @@ export async function sweepAddress(arrUTXOs, sweepingMasterKey, nFixedFee = 0) {
     cTx.addoutput(strAddress, (nTotal - nFee) / COIN);
 
     // Sign using the given Master Key, then broadcast the sweep, returning the TXID (or a failure)
-    const sign = await signTransaction(cTx, sweepingMasterKey);
+    const sweepingWallet = new Wallet(0, false);
+    await sweepingWallet.setMasterKey(sweepingMasterKey);
+    const sign = await signTransaction(cTx, sweepingWallet);
     return await getNetwork().sendTransaction(sign);
 }
 
@@ -1544,36 +1548,47 @@ export function isMasternodeUTXO(cUTXO, cMasternode) {
  * Creates a GUI popup for the user to check or customise their Cold Address
  */
 export async function guiSetColdStakingAddress() {
+    // Use the Account's cold address, otherwise use the network's default Cold Staking address
+    const strColdAddress = await wallet.getColdStakingAddress();
+
+    // Display the popup and await a response
     if (
         await confirmPopup({
             title: translation.popupSetColdAddr,
-            html: `<p>${
-                translation.popupCurrentAddress
-            }<br><span class="mono">${strColdStakingAddress}</span><br><br><span style="opacity: 0.65; margin: 10px;">${
-                translation.popupColdStakeNote
-            }</span></p><br><input type="text" id="newColdAddress" placeholder="${
+            html: `
+            <p>
+                <span style="opacity: 0.65; margin: 10px; margin-buttom: 0px;">
+                    ${translation.popupColdStakeNote}
+                </span>
+            </p>
+            <input type="text" id="newColdAddress" placeholder="${
                 translation.popupExample
-            } ${strColdStakingAddress.substring(
+            } ${strColdAddress.substring(
                 0,
                 6
-            )}..." style="text-align: center;">`,
+            )}..." value="${strColdAddress}" style="text-align: center;">`,
         })
     ) {
-        // Fetch address from the popup input
-        const strColdAddress = document.getElementById('newColdAddress').value;
-
-        // If it's empty, just return false
-        if (!strColdAddress) return false;
-
-        // Sanity-check, and set!
+        // Check the Cold Address input
+        const strNewColdAddress = document
+            .getElementById('newColdAddress')
+            .value.trim();
+        const fValidCold = isColdAddress(strNewColdAddress);
         if (
-            strColdAddress[0] === cChainParams.current.STAKING_PREFIX &&
-            strColdAddress.length === 34
+            !strNewColdAddress ||
+            (strNewColdAddress !== strColdAddress && fValidCold)
         ) {
-            await setColdStakingAddress(strColdAddress);
+            // If the input is empty: we'll default back to this network's Cold Staking address (effectively a 'reset')
+            const cDB = await Database.getInstance();
+            const cAccount = await cDB.getAccount();
+
+            // Save to DB (allowDeletion enabled to allow for resetting the Cold Address)
+            cAccount.coldAddress = strNewColdAddress;
+            await cDB.updateAccount(cAccount, true);
+
             createAlert('info', ALERTS.STAKE_ADDR_SET, 5000);
             return true;
-        } else {
+        } else if (!fValidCold) {
             createAlert('warning', ALERTS.STAKE_ADDR_BAD, 2500);
             return false;
         }
@@ -1610,6 +1625,7 @@ export async function wipePrivateData() {
  * @returns {Promise<boolean>} - If the unlock was successful or rejected
  */
 export async function restoreWallet(strReason = '') {
+    if (wallet.isHardwareWallet()) return true;
     // Build up the UI elements based upon conditions for the unlock prompt
     let strHTML = '';
 
@@ -2271,7 +2287,7 @@ export async function updateMasternodeTab() {
         return;
     }
 
-    if (!mempool.getConfirmed().length) {
+    if (!mempool.isLoaded) {
         doms.domMnTextErrors.innerHTML =
             'Your wallet is empty or still loading, re-open the tab in a few seconds!';
         return;
@@ -2282,11 +2298,11 @@ export async function updateMasternodeTab() {
     let cMasternode = await database.getMasternode();
     // If the collateral is missing (spent, or switched wallet) then remove the current MN
     if (cMasternode) {
-        if (
-            !mempool
-                .getConfirmed()
-                .find((utxo) => isMasternodeUTXO(utxo, cMasternode))
-        ) {
+        const op = new COutpoint({
+            txid: cMasternode.collateralTxId,
+            n: cMasternode.outidx,
+        });
+        if (!mempool.hasUTXO(op, UTXO_WALLET_STATE.SPENDABLE, true)) {
             database.removeMasternode();
             cMasternode = null;
         }
@@ -2300,11 +2316,15 @@ export async function updateMasternodeTab() {
             doms.masternodeLegacyAccessText;
         doms.domMnTxId.style.display = 'none';
         // Find the first UTXO matching the expected collateral size
-        const cCollaUTXO = mempool
-            .getConfirmed()
-            .find(
-                (cUTXO) => cUTXO.sats === cChainParams.current.collateralInSats
-            );
+        const cCollaUTXO = (
+            await mempool.getUTXOs({
+                filter: UTXO_WALLET_STATE.SPENDABLE,
+                onlyConfirmed: true,
+            })
+        ).find(
+            (cUTXO) => cUTXO.value === cChainParams.current.collateralInSats
+        );
+
         const balance = getBalance(false);
         if (cCollaUTXO) {
             if (cMasternode) {
@@ -2312,7 +2332,7 @@ export async function updateMasternodeTab() {
                 doms.domMnDashboard.style.display = '';
             } else {
                 doms.domMnTxId.style.display = 'none';
-                doms.domccessMasternode.style.display = 'block';
+                doms.domAccessMasternode.style.display = 'block';
             }
         } else if (balance < cChainParams.current.collateralInSats) {
             // The user needs more funds
@@ -2337,9 +2357,12 @@ export async function updateMasternodeTab() {
         const mapCollateralAddresses = new Map();
 
         // Aggregate all valid Masternode collaterals into a map of Address <--> Collateral
-        for (const cUTXO of mempool.getConfirmed()) {
-            if (cUTXO.sats !== cChainParams.current.collateralInSats) continue;
-            mapCollateralAddresses.set(cUTXO.path, cUTXO);
+        for (const cUTXO of await mempool.getUTXOs({
+            filter: UTXO_WALLET_STATE.SPENDABLE,
+            onlyConfirmed: true,
+        })) {
+            if (cUTXO.value !== cChainParams.current.collateralInSats) continue;
+            mapCollateralAddresses.set(wallet.getPath(cUTXO.script), cUTXO);
         }
         const fHasCollateral = mapCollateralAddresses.size > 0;
 
@@ -2558,7 +2581,7 @@ export async function createProposal() {
     }
 }
 
-export function refreshChainData() {
+export async function refreshChainData() {
     const cNet = getNetwork();
     // If in offline mode: don't sync ANY data or connect to the internet
     if (!cNet.enabled)
@@ -2567,17 +2590,8 @@ export function refreshChainData() {
         );
     if (!wallet.isLoaded()) return;
 
-    // Fetch block count + UTXOs, update the UI for new transactions
-    cNet.getBlockCount().then((_) => {
-        // Fetch latest Activity
-        activityDashboard.update(true);
-
-        // If it's open: update the Governance Dashboard
-        if (doms.domGovTab.classList.contains('active')) {
-            updateGovernanceTab();
-        }
-    });
-    getBalance(true);
+    // Fetch block count
+    await cNet.getBlockCount();
 }
 
 // A safety mechanism enabled if the user attempts to leave without encrypting/saving their keys

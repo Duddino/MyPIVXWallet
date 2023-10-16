@@ -1,4 +1,4 @@
-export const de_translation = {
+export default {
     // This document is to be used as a template as all the base code is in English
     // Basic HTML tags are allowed such as <b><i> etc. All data is sanitized https://developer.mozilla.org/en-US/docs/Web/API/Element/innerHTML
 
@@ -166,6 +166,7 @@ export const de_translation = {
     // Stake
     stake: 'Delegieren', //Stake
     stakeUnstake: 'Abberufen', //Unstake
+    ownerAddress: '', //(Optional) Owner Address
     rewardHistory: 'Vergütungshistorie', //Reward History
     loadMore: 'Zeige mehr', //Load more
 
@@ -249,7 +250,7 @@ export const de_translation = {
     popupSetColdAddr: 'Gib eine kalte Staking Adresse an', //Set your Cold Staking address
     popupCurrentAddress: 'Aktuelle Adresse', //Current address:
     popupColdStakeNote:
-        'Eine kalte Staking Adresse delegiert Münzen für dich. Sie kann nicht für Transaktionen verwendet werden, so kannst du auch fremde kalte Adressen verwenden!', //A Cold Address stakes coins on your behalf, it cannot spend coins, so it's even safe to use a stranger's Cold Address!
+        'Eine kalte Staking Adresse delegiert Münzen für dich. Sie kann nicht für Transaktionen verwendet werden, so kannst du auch fremde kalte Adressen verwenden!', //A Cold Address stakes coins on your behalf, it cannot spend coins, so it's even safe to use a stranger\'s Cold Address!
     popupExample: 'Beispiel', //Example:
     popupWalletLock: 'Möchtest du deine Geldbörse sperren?', //Do you want to lock your wallet?
     popupWalletWipe:
@@ -301,6 +302,7 @@ export const de_translation = {
 
     INTERNAL_ERROR: 'Interner Fehler, bitte versuche es später erneut', //Internal error, please try again later
     FAILED_TO_IMPORT: '<b>Import fehlgeschlagen!</b> Falsches Passwort', //<b>Failed to import!</b> Invalid password
+    FAILED_TO_IMPORT_HARDWARE: '', // <b> Failed to import Hardware Wallet</b>.
     UNSUPPORTED_CHARACTER:
         'Das Zeichen {char} ist nicht erlaubt in der Adresse! (Nicht Base58 kompatibel)', //The character '{char}' is unsupported in addresses! (Not Base58 compatible)
     UNSUPPORTED_WEBWORKERS:
@@ -370,6 +372,7 @@ export const de_translation = {
     MN_STATUS_IS: 'Der Status der Masternode ist', //Your masternode status is
     MN_STATE: 'Die Masternode hat den Status <b>{state}</b>', //Your masternode is in <b>{state}</b> state
     MN_BAD_IP: 'Die IP-Adresse ist ungültig', //The IP address is invalid!
+    MN_BAD_PRIVKEY: '', //The private key is invalid
     MN_NOT_ENOUGH_COLLAT:
         'Du benötigst <b>{amount} mehr {ticker}</b> um eine Masternode zu erstellen!', //You need <b>{amount} more {ticker}</b> to create a Masternode!
     MN_ENOUGH_BUT_NO_COLLAT:
@@ -434,6 +437,9 @@ export const de_translation = {
     WALLET_CONFIRM_L: 'Bestätige den Import auf deinem Ledger', //Confirm the import on your Ledger
     WALLET_NO_HARDWARE:
         '<b>Kein Gerät verfügbar</b><br>Es wurde keine Hardware-Geldbörse gefunden, bitte stecke es ein und entsperre es!', //<b>No device available</b><br>Couldn't find a hardware wallet; please plug it in and unlock!
+    WALLET_HARDWARE_UDEV: '', // <b>The OS denied access</b> Did you add the udev rules?
+    WALLET_HARDWARE_NO_ACCESS: '', // <b>The OS denied access</b> Please check your Operating System settings.
+
     WALLET_HARDWARE_CONNECTION_LOST:
         '<b>Verbindung zum {hardwareWallet} verloren</b><br>So wie es scheint, wurde das {hardwareWalletProductionName} im Prozess abgezogen, oops!', //<b>Lost connection to {hardwareWallet} </b><br>It seems the {hardwareWalletProductionName} was unplugged mid-operation, oops!
     WALLET_HARDWARE_BUSY:

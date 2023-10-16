@@ -1,4 +1,4 @@
-export const es_mx_translation = {
+export default {
     // Este documento se debe usar como una plantilla ya que todo el código base está en inglés
     // Se permiten etiquetas HTML básicas como <b><i> etc. Todos los datos están saneados https://developer.mozilla.org/es/docs/Web/API/Element/innerHTML
 
@@ -165,6 +165,7 @@ export const es_mx_translation = {
     // Stake
     stake: 'Stake', //Stake
     stakeUnstake: 'Unstake', //Unstake
+    ownerAddress: '', //(Optional) Owner Address
     rewardHistory: 'Historial de recompensas', //Reward History
     loadMore: 'Cargar más', //Load more
 
@@ -305,6 +306,7 @@ export const es_mx_translation = {
 
     INTERNAL_ERROR: 'Error interno, vuelve a intentarlo más tarde', //Internal error, please try again later
     FAILED_TO_IMPORT: '<b>¡No se ha podido importar!</b> Contraseña inválida', //<b>Failed to import!</b> Invalid password
+    FAILED_TO_IMPORT_HARDWARE: '', // <b> Failed to import Hardware Wallet</b>.
     UNSUPPORTED_CHARACTER:
         '¡El carácter {char} no está soportado en las direcciones! (No compatible con Base58)', //The character '{char}' is unsupported in addresses! (Not Base58 compatible)
     UNSUPPORTED_WEBWORKERS:
@@ -373,6 +375,7 @@ export const es_mx_translation = {
     MN_STATUS_IS: 'El estado de tu masternode es', //Your masternode status is
     MN_STATE: 'Tu masternode está <b>{state}</b>', //Your masternode is in <b>{state}</b> state
     MN_BAD_IP: '¡La dirección IP no es válida!', //The IP address is invalid!
+    MN_BAD_PRIVKEY: '', //The private key is invalid
     MN_NOT_ENOUGH_COLLAT:
         '¡Necesitas <b>{amount} más {ticker}</b> para crear un Masternode!', //You need <b>{amount} more {ticker}</b> to create a Masternode!
     MN_ENOUGH_BUT_NO_COLLAT:
@@ -421,6 +424,8 @@ export const es_mx_translation = {
     WALLET_CONFIRM_L: 'Confirma la importación en tu Ledger', //Confirm the import on your Ledger
     WALLET_NO_HARDWARE:
         '<b>No hay ningún dispositivo disponible</b><br>No se pudo encontrar una wallet de hardware; ¡Conéctala y desbloquéala!', //<b>No device available</b><br>Couldn't find a hardware wallet; please plug it in and unlock!
+    WALLET_HARDWARE_UDEV: '', // <b>The OS denied access</b> Did you add the udev rules?
+    WALLET_HARDWARE_NO_ACCESS: '', // <b>The OS denied access</b> Please check your Operating System settings.
     WALLET_HARDWARE_CONNECTION_LOST:
         '<b>Se perdió la conexión con {hardwareWallet} </b><br>Parece que {hardwareWalletProductionName} se desconectó en mitad de la operación, ¡ups!', //<b>Lost connection to {hardwareWallet} </b><br>It seems the {hardwareWalletProductionName} was unplugged mid-operation, oops!
     WALLET_HARDWARE_BUSY:

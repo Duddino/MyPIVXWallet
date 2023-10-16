@@ -3,7 +3,7 @@ import { doms } from './global.js';
 import qrcode from 'qrcode-generator';
 import bs58 from 'bs58';
 import { bech32 } from 'bech32';
-import { BIP21_PREFIX, cChainParams } from './chain_params';
+import { BIP21_PREFIX, cChainParams } from './chain_params.js';
 import { dSHA256 } from './utils.js';
 
 /* MPW constants */
@@ -286,6 +286,18 @@ export function isStandardAddress(strAddress) {
     return (
         strAddress.length === 34 &&
         cChainParams.current.PUBKEY_PREFIX.includes(strAddress[0])
+    );
+}
+
+/**
+ * A quick check to see if an address is a Cold (P2CS) address
+ * @param {string} strAddress - The address to check
+ * @returns {boolean} - `true` if a Cold address, `false` if not
+ */
+export function isColdAddress(strAddress) {
+    return (
+        strAddress.length === 34 &&
+        cChainParams.current.STAKING_PREFIX === strAddress[0]
     );
 }
 
