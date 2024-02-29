@@ -373,6 +373,9 @@ export class Transaction {
      * Using the sighash type SIGHASH_ALL
      */
     transactionHash(index) {
+        if (this.hasSaplingVersion) {
+            throw new Error('tx version too high, cannot use base tx hash');
+        }
         const copy = structuredClone(this.__original);
         // Black out all inputs
         for (let i = 0; i < copy.vin.length; i++) {
