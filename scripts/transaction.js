@@ -3,6 +3,7 @@ import { hexToBytes, bytesToHex, dSHA256 } from './utils.js';
 import { OP } from './script.js';
 import { varIntToNum, deriveAddress } from './encoding.js';
 import * as nobleSecp256k1 from '@noble/secp256k1';
+import { SAPLING_TX_VERSION } from './chain_params.js';
 
 /** An Unspent Transaction Output, used as Inputs of future transactions */
 export class COutpoint {
@@ -113,6 +114,13 @@ export class Transaction {
         });
     }
 
+    get hasSaplingVersion() {
+        return (
+            typeof this.version == typeof 3 &&
+            this.__original.version >= SAPLING_TX_VERSION
+        );
+    }
+
     get txid() {
         if (!this.__original.#txid) {
             this.__original.#txid = bytesToHex(
@@ -209,7 +217,7 @@ export class Transaction {
 
         this.lockTime = Number(bytesToNum(bytes.slice(offset, (offset += 4))));
 
-        if (this.version === 3) {
+        if (this.hasSaplingVersion) {
             const hasShield = bytesToNum(bytes.slice(offset, (offset += 1)));
             if (hasShield) {
                 this.valueBalance = Number(
@@ -321,7 +329,7 @@ export class Transaction {
         }
         buffer = [...buffer, ...numToBytes(BigInt(this.lockTime), 4)];
 
-        if (this.version === 3) {
+        if (this.hasSaplingVersion) {
             buffer = [
                 ...buffer,
                 Number(this.hasShieldData()),
