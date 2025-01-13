@@ -16,12 +16,13 @@ import {
 } from '../misc.js';
 import { ALERTS, translation, tr } from '../i18n.js';
 import { HardwareWalletMasterKey, HdMasterKey } from '../masterkey';
-import { COIN } from '../chain_params';
+import { COIN, cChainParams } from '../chain_params';
 import { onMounted, ref, watch, computed } from 'vue';
 import { getEventEmitter } from '../event_bus';
 import { Database } from '../database';
 import { start, doms, updateLogOutButton } from '../global';
 import { validateAmount } from '../legacy';
+import { debugError, DebugTopics } from '../debug.js';
 import {
     confirmPopup,
     isXPub,
@@ -100,11 +101,17 @@ async function importWallet({
             );
             return false;
         }
-        parsedSecret = new ParsedSecret(
-            secret
-                ? HardwareWalletMasterKey.fromXPub(secret)
-                : await HardwareWalletMasterKey.create()
-        );
+        try {
+            parsedSecret = new ParsedSecret(
+                secret
+                    ? HardwareWalletMasterKey.fromXPub(secret)
+                    : await HardwareWalletMasterKey.create()
+            );
+        } catch (e) {
+            // The user has already been notified in `ledger.js`
+            debugError(DebugTopics.LEDGER, e);
+            return;
+        }
 
         createAlert(
             'info',
@@ -408,7 +415,7 @@ onMounted(async () => {
         } else if (urlParams.has('pay')) {
             transferAddress.value = urlParams.get('pay') ?? '';
             transferDescription.value = urlParams.get('desc') ?? '';
-            transferAmount.value = parseFloat(urlParams.get('amount')) ?? 0;
+            transferAmount.value = parseFloat(urlParams.get('amount')) || '';
             showTransferMenu.value = true;
         }
 
@@ -791,7 +798,13 @@ defineExpose({
                                                         "
                                                         class="text-center"
                                                     >
-                                                        <b> Amount </b>
+                                                        <b>
+                                                            {{
+                                                                cChainParams
+                                                                    .current
+                                                                    .TICKER
+                                                            }}
+                                                        </b>
                                                     </td>
                                                     <td
                                                         style="
@@ -800,7 +813,12 @@ defineExpose({
                                                                 solid #534270;
                                                         "
                                                         class="text-center"
-                                                    ></td>
+                                                    >
+                                                        <i
+                                                            onclick="MPW.promosToCSV()"
+                                                            class="fa-solid fa-lg fa-file-csv ptr"
+                                                        ></i>
+                                                    </td>
                                                 </tr>
                                             </thead>
                                             <tbody

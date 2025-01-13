@@ -249,7 +249,7 @@ QR_SCANNER_BAD_RECEIVER = "is not a valid payment receiver"
 UNSUPPORTED_CHARACTER = "The character '{char}' is unsupported in addresses! (Not Base58 compatible)"
 UNSUPPORTED_WEBWORKERS = "This browser doesn't support Web Workers (multi-threaded JS), unfortunately you cannot generate Vanity wallets!"
 INVALID_ADDRESS = "<b>Invalid PIVX address!</b><br> {address}"
-VALIDATE_AMOUNT_LOW = "<br>Minimum amount is {minimumAmount} {coinTicker}!"
+VALIDATE_AMOUNT_LOW = "Minimum amount is {minimumAmount} {coinTicker}!"
 VALIDATE_AMOUNT_DECIMAL = "{coinDecimal} decimal limit exceeded"
 SUCCESS_STAKING_ADDR = "<b>Staking Address set!</b><br>Now go ahead and unstake!"
 CONFIRM_UNSTAKE_H_WALLET = "<b>Confirm your Unstake</b><br>Confirm the TX on your {strHardwareName}"
@@ -340,5 +340,5 @@ CONFIRM_POPUP_DELETE_ACCOUNT = 'This will delete all your data, including master
 CONFIRM_POPUP_DELETE_ACCOUNT_TITLE = 'Are you sure?'
 CONFIRM_LEDGER_TX = 'Confirm this transaction matches the one on your {hardwareWallet}'
 CONFIRM_LEDGER_TX_OUT = 'You will send {value} {ticker} to <div class="inline-address">{address}</div>'
-MISSING_FUNDS = 'Balance is too small! Missing {sats} sats!'
+MISSING_FUNDS = '<b>Balance is too small!</b> <br> Missing {sats} sats!'
 MISSING_SHIELD = "Shield is not enabled in this wallet!"
