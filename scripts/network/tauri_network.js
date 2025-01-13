@@ -1,13 +1,11 @@
+import { Network } from './network.js';
+import { wallet } from '../wallet.js';
 import { invoke } from '@tauri-apps/api/tauri';
-import { Transaction } from './transaction.js';
+import { Transaction } from '../transaction.js';
+import { HdMasterKey } from '../masterkey.js';
 
-export class TauriNetwork {
-    enable() {}
-    disable() {}
+export class TauriNetwork extends Network {
     submitAnalytics() {}
-    constructor() {
-        console.log(this);
-    }
 
     /**
      * Fetch a block from the node given the height
@@ -27,7 +25,6 @@ export class TauriNetwork {
     }
 
     async sendTransaction(transaction) {
-        console.log(transaction);
         const res = await invoke('explorer_send_transaction', { transaction });
         return res;
     }
@@ -42,35 +39,27 @@ export class TauriNetwork {
         ).json();
     }
 
-    /**
-     * @param {import("./wallet.js").Wallet} wallet
-     */
-    async getLatestTxs(wallet) {
-        if (wallet.isSynced) {
-            throw new Error('getLatestTxs must only be for initial sync');
-        }
-        let nStartHeight = Math.max(
-            ...wallet.getTransactions().map((tx) => tx.blockHeight)
-        );
+    async getNumPages() {
+        return 1;
+    }
+
+    async getTxPage(nStartHeight, addr, _n) {
+        const mk = new HdMasterKey({ xpub: addr });
         let txs = [];
         const addresses = [];
         for (let i = 0; i < 2; i++) {
-            for (let j = 0; j < 1000; j++) {
-                const address = wallet.getAddress(i, j);
+            for (let j = 0; j < 500; j++) {
+                const address = mk.getAddress(mk.getDerivationPath(0, i, j));
                 addresses.push(address);
             }
         }
-        //for (let i = 0; i<30; i++) {
-        const first = wallet.getAddress(0, 0);
-        //	    const change = wallet.getAddress(1, i);
-
         txs = [
             ...txs,
             ...(await invoke('explorer_get_txs', {
                 addresses: addresses,
             })),
         ];
-        console.log(txs);
+
         const parsedTxs = [];
         const parseTx = async (hex, height, time) => {
             const parsed = Transaction.fromHex(hex);
@@ -98,9 +87,13 @@ export class TauriNetwork {
                 await parseTx(hex, height, time);
             }
         }
-        for (const tx of parsedTxs.sort((tx) => tx.blockHeight)) {
-            console.log(tx.txid);
-            await wallet.addTransaction(tx);
-        }
+        return parsedTxs
+            .sort((tx) => tx.blockHeight)
+            .map((tx) => {
+                const parsed = Transaction.fromHex(tx.hex);
+                parsed.blockHeight = tx.blockHeight;
+                parsed.blockTime = tx.blockTime;
+                return parsed;
+            });
     }
 }

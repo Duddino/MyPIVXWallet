@@ -1,4 +1,5 @@
 import { ExplorerNetwork, RPCNodeNetwork } from './network.js';
+import { TauriNetwork } from './tauri_network.js';
 import { cChainParams } from '../chain_params.js';
 import { fAutoSwitch } from '../settings.js';
 import { debugLog, DebugTopics, debugWarn } from '../debug.js';
@@ -23,9 +24,7 @@ class NetworkManager {
 
     start() {
         this.#networks = [];
-        for (let network of cChainParams.current.Explorers) {
-            this.#networks.push(new ExplorerNetwork(network.url));
-        }
+        this.#networks.push(new TauriNetwork());
         for (let network of cChainParams.current.Nodes) {
             this.#networks.push(new RPCNodeNetwork(network.url));
         }
@@ -50,7 +49,10 @@ class NetworkManager {
         const found = this.#networks.find(
             (network) => network.strUrl === strUrl
         );
-        if (!found) throw new Error('Cannot find provided Network!');
+        if (!found) {
+            this.#currentExplorer = this.#networks[0];
+            return;
+        }
         if (isRPC) {
             this.#currentNode = found;
         } else {
