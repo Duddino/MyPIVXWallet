@@ -43,35 +43,93 @@ export class TauriNetwork extends Network {
         return 1;
     }
 
-    async getTxPage(nStartHeight, addr, _n) {
+    async #getSpentTxs() {}
+
+    #parseTx(hex, height, time) {
+        const parsed = Transaction.fromHex(hex);
+        parsed.blockHeight = height;
+        parsed.blockTime = time;
+        return parsed;
+    }
+
+    /**
+     * @returns {Promise<[string, number, number][]>} the incoming txs of an address.
+     * We can do this by using `explorer_get_txs` with our own addresses
+     */
+    async #getIncomingTxs(addr) {
+        // Number of transaction checked before assuming it's empty
+        const gap = 30;
         const mk = new HdMasterKey({ xpub: addr });
         let txs = [];
         const addresses = [];
         for (let i = 0; i < 2; i++) {
-            for (let j = 0; j < 500; j++) {
-                const address = mk.getAddress(mk.getDerivationPath(0, i, j));
-                addresses.push(address);
+            let index = 0;
+            // Loop until we have checked all the addresses up to the gap
+            while (true) {
+                for (let j = index; j < index + gap; j++) {
+                    const address = mk.getAddress(
+                        mk.getDerivationPath(0, i, j)
+                    );
+                    addresses.push(address);
+                }
+
+                // Fetch txs from the index
+                /**
+                 * @type{[string, number, number][]}
+                 */
+                const newTxs = await invoke('explorer_get_txs', {
+                    addresses: addresses,
+                });
+                txs = [...txs, ...newTxs];
+                // Txs are ordered based on the addresses we passed.
+                // Since our values were ordered by index, we can safely
+                // Check the last hex
+                const lastTx = newTxs.at(-1);
+                if (lastTx) {
+                    const tx = this.#parseTx(...lastTx);
+                    let lastIndex = Number.NEGATIVE_INFINITY;
+                    for (const vout of tx.vout) {
+                        const path = wallet.getPath(vout.script);
+                        if (!path) continue;
+
+                        lastIndex = Math.max(
+                            lastIndex,
+                            Number.parseInt(path.split('/').at(-1))
+                        );
+                    }
+                    if (
+                        lastIndex === Number.NEGATIVE_INFINITY ||
+                        Number.isNaN(lastIndex)
+                    ) {
+                        // This should never happen, the index should have gave us a valid tx
+                        throw new Error('Invalid last index');
+                    } else {
+                        index = lastIndex + 1;
+                    }
+                } else {
+                    // No new tx, we have checked every address up to the gap
+                    break;
+                }
             }
         }
-        txs = [
-            ...txs,
-            ...(await invoke('explorer_get_txs', {
-                addresses: addresses,
-            })),
-        ];
+        return txs;
+    }
 
+    async getTxPage(nStartHeight, addr, _n) {
         const parsedTxs = [];
-        const parseTx = async (hex, height, time) => {
-            const parsed = Transaction.fromHex(hex);
-            parsed.blockHeight = height;
-            parsed.blockTime = time;
-            parsedTxs.push(parsed);
-            return parsed;
+        const parseTx = (hex, height, time) => {
+            const tx = this.#parseTx(hex, height, time);
+            parsedTxs.push(tx);
+            return tx;
         };
 
-        //}
-        for (const [hex, height, time] of txs) {
-            const parsed = await parseTx(hex, height, time);
+        const incomingTxs = await this.#getIncomingTxs(addr);
+
+        // Get outgoing txs
+        // We do this by getting our own vouts, and getting the full tx
+        // Based on that vout (Which will be that tx's vin)
+        for (const [hex, height, time] of incomingTxs) {
+            const parsed = parseTx(hex, height, time);
             for (let i = 0; i < parsed.vout.length; i++) {
                 const vout = parsed.vout[i];
                 const path = wallet.getPath(vout.script);
@@ -84,7 +142,7 @@ export class TauriNetwork extends Network {
                 });
                 if (!tx) continue;
                 const [hex, height, time] = tx;
-                await parseTx(hex, height, time);
+                parseTx(hex, height, time);
             }
         }
         return parsedTxs
