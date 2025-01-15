@@ -6,7 +6,7 @@ const props = defineProps({
 </script>
 
 <template>
-    <div v-if="show" div class="progress" style="max-width: 310px">
+    <div v-if="show" class="progress" style="max-width: 310px">
         <div
             class="progress-bar progress-bar-striped progress-bar-animated"
             role="progressbar"

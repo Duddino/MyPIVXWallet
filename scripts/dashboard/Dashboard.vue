@@ -42,6 +42,7 @@ import { ParsedSecret } from '../parsed_secret.js';
 import { storeToRefs } from 'pinia';
 import { Account } from '../accounts';
 import { useAlerts } from '../composables/use_alerts.js';
+import SyncProgress from '../tauri/sync/SyncProgress.vue';
 const { createAlert } = useAlerts();
 const wallet = useWallet();
 const activity = ref(null);
@@ -506,6 +507,7 @@ defineExpose({
 </script>
 
 <template>
+    <SyncProgress />
     <div id="keypair" class="tabcontent">
         <div class="row m-0">
             <Login
