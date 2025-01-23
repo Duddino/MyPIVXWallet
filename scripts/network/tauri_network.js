@@ -56,13 +56,17 @@ export class TauriNetwork extends Network {
     /**
      * @returns {Promise<[string, number, number][]>} the incoming txs of an address.
      * We can do this by using `explorer_get_txs` with our own addresses
+     * @param {string}  addr
      */
     async #getIncomingTxs(addr) {
         // Number of transaction checked before assuming it's empty
-        const gap = MAX_ACCOUNT_GAP;
-        const mk = new HdMasterKey({ xpub: addr });
-        let txs = [];
+        if (!addr.startsWith('xpub')) {
+            return await invoke('explorer_get_txs', { addresses: [addr] });
+        }
 
+        const mk = new HdMasterKey({ xpub: addr });
+        const gap = MAX_ACCOUNT_GAP;
+        let txs = [];
         for (let i = 0; i < 2; i++) {
             let index = 0;
             // Loop until we have checked all the addresses up to the gap
