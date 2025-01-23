@@ -455,7 +455,7 @@ export class Wallet {
      * Check if the vout is owned and in case update highestUsedIdex
      * @param {CTxOut} vout
      */
-    #updateHighestUsedIndex(vout) {
+    updateHighestUsedIndex(vout) {
         const dataBytes = hexToBytes(vout.script);
         const iStart = isP2PKH(dataBytes) ? P2PK_START_INDEX : COLD_START_INDEX;
         const address = this.#getAddressFromHashCache(
@@ -1349,7 +1349,7 @@ export class Wallet {
         this.#mempool.addTransaction(transaction);
         let i = 0;
         for (const out of transaction.vout) {
-            this.#updateHighestUsedIndex(out);
+            this.updateHighestUsedIndex(out);
             const status = this.#getScriptType(out.script);
             if (status & OutpointState.OURS) {
                 this.#mempool.addOutpointStatus(

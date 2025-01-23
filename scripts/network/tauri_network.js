@@ -3,6 +3,7 @@ import { wallet } from '../wallet.js';
 import { invoke } from '@tauri-apps/api/tauri';
 import { Transaction } from '../transaction.js';
 import { HdMasterKey } from '../masterkey.js';
+import { MAX_ACCOUNT_GAP } from '../chain_params.js';
 
 export class TauriNetwork extends Network {
     submitAnalytics() {}
@@ -58,14 +59,15 @@ export class TauriNetwork extends Network {
      */
     async #getIncomingTxs(addr) {
         // Number of transaction checked before assuming it's empty
-        const gap = 30;
+        const gap = MAX_ACCOUNT_GAP;
         const mk = new HdMasterKey({ xpub: addr });
         let txs = [];
-        const addresses = [];
+
         for (let i = 0; i < 2; i++) {
             let index = 0;
             // Loop until we have checked all the addresses up to the gap
             while (true) {
+                const addresses = [];
                 for (let j = index; j < index + gap; j++) {
                     const address = mk.getAddress(
                         mk.getDerivationPath(0, i, j)
@@ -80,7 +82,12 @@ export class TauriNetwork extends Network {
                 const newTxs = await invoke('explorer_get_txs', {
                     addresses: addresses,
                 });
-                txs = [...txs, ...newTxs];
+                for (const tx of newTxs) {
+                    if (newTxs.map(([hex]) => hex).includes(tx[0])) {
+                        txs.push(tx);
+                    }
+                }
+
                 // Txs are ordered based on the addresses we passed.
                 // Since our values were ordered by index, we can safely
                 // Check the last hex
@@ -91,6 +98,7 @@ export class TauriNetwork extends Network {
                     for (const vout of tx.vout) {
                         const path = wallet.getPath(vout.script);
                         if (!path) continue;
+                        wallet.updateHighestUsedIndex(vout);
 
                         lastIndex = Math.max(
                             lastIndex,
@@ -101,7 +109,7 @@ export class TauriNetwork extends Network {
                         lastIndex === Number.NEGATIVE_INFINITY ||
                         Number.isNaN(lastIndex)
                     ) {
-                        // This should never happen, the index should have gave us a valid tx
+                        // This should never happen, the index should have given us a valid tx
                         throw new Error('Invalid last index');
                     } else {
                         index = lastIndex + 1;
@@ -119,6 +127,9 @@ export class TauriNetwork extends Network {
         const parsedTxs = [];
         const parseTx = (hex, height, time) => {
             const tx = this.#parseTx(hex, height, time);
+            for (const vout of tx.vout) {
+                wallet.updateHighestUsedIndex(vout);
+            }
             parsedTxs.push(tx);
             return tx;
         };
@@ -132,12 +143,14 @@ export class TauriNetwork extends Network {
             const parsed = parseTx(hex, height, time);
             for (let i = 0; i < parsed.vout.length; i++) {
                 const vout = parsed.vout[i];
+
                 const path = wallet.getPath(vout.script);
                 if (!path) continue;
+                wallet.updateHighestUsedIndex(vout);
                 const tx = await invoke('explorer_get_tx_from_vin', {
                     vin: {
                         txid: parsed.txid,
-                        n: i,
+                        vout: i,
                     },
                 });
                 if (!tx) continue;
@@ -145,13 +158,21 @@ export class TauriNetwork extends Network {
                 parseTx(hex, height, time);
             }
         }
-        return parsedTxs
-            .sort((tx) => tx.blockHeight)
-            .map((tx) => {
-                const parsed = Transaction.fromHex(tx.hex);
-                parsed.blockHeight = tx.blockHeight;
-                parsed.blockTime = tx.blockTime;
-                return parsed;
-            });
+        // This may not work for blocks with 2+ tx.
+        // But it's fairly unlikely, so i'll leave it for a future improvement
+        return parsedTxs.sort((a, b) => {
+            const comp = b.blockHeight - a.blockHeight;
+            if (comp !== 0) return comp;
+            if (b.vin.map((v) => v.outpoint.txid).includes(a.txid)) {
+                // b spends a, a goes second (We need to reverse the order for MPW)
+                return 1;
+            }
+            if (a.vin.map((v) => v.outpoint.txid).includes(b.txid)) {
+                // a spends b, b goes second
+                return -1;
+            }
+            // Either can work.
+            return -1;
+        });
     }
 }
