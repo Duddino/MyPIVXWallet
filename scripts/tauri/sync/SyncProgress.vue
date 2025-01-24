@@ -8,7 +8,7 @@ const tauri = useTauri();
 
 <template>
     <Teleport to="body">
-        <Modal :show="tauri.initialSync">
+        <Modal :show="tauri.loadingState !== 2">
             <template #header>
                 <h3
                     class="modal-title"
@@ -19,7 +19,11 @@ const tauri = useTauri();
             </template>
             <template #body>
                 <div class="syncBody">
-                    {{ translation.pivxSyncBodyRow1 }}
+                    {{
+                        tauri.loadingState === 0
+                            ? translation.pivxSyncBodyRow1
+                            : translation.indexSyncBodyRow1
+                    }}
                     {{ '\n' }}
                     {{ translation.pivxSyncBodyRow2 }}
                     <center>
