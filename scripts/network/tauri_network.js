@@ -27,7 +27,7 @@ export class TauriNetwork extends Network {
 
     async sendTransaction(transaction) {
         const res = await invoke('explorer_send_transaction', { transaction });
-        return res;
+        return { result: res };
     }
 
     /**
