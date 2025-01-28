@@ -213,7 +213,6 @@ export function sortBlock(txs) {
      * where Tx.txid spends each transaction in the array
      * @type {Map<string, Transaction[]>}
      */
-    debugger;
     const edges = new Map();
     for (const tx of txs) {
         edges.set(
@@ -256,7 +255,6 @@ export function sortBlock(txs) {
             }
         }
     }
-    console.log(edges);
     if (edges.size) throw new Error('Cyclic graph');
     return l;
 }
