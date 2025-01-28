@@ -162,21 +162,101 @@ export class TauriNetwork extends Network {
                 parseTx(hex, height, time);
             }
         }
-        // This may not work for blocks with 2+ tx.
-        // But it's fairly unlikely, so i'll leave it for a future improvement
-        return parsedTxs.sort((a, b) => {
-            const comp = b.blockHeight - a.blockHeight;
-            if (comp !== 0) return comp;
-            if (b.vin.map((v) => v.outpoint.txid).includes(a.txid)) {
-                // b spends a, a goes second (We need to reverse the order for MPW)
-                return 1;
-            }
-            if (a.vin.map((v) => v.outpoint.txid).includes(b.txid)) {
-                // a spends b, b goes second
-                return -1;
-            }
-            // Either can work.
-            return -1;
-        });
+
+        return sortTxs(parsedTxs);
     }
+}
+
+/**
+ * @param {Transaction[]} txs
+ */
+function sortTxs(txs) {
+    // The traversal order, as of modern ECMAScript specification, is
+    // well-defined and consistent across implementations. Within each
+    // component of the prototype chain, all non-negative integer keys
+    // (those that can be array indices) will be traversed first in
+    // ascending order by value, then other string keys in ascending
+    // chronological order of property creation.
+    // We use an object and not a map because maps for..in order is based on insertion order
+    /**
+     * @type{{[key: number]: Transaction[]}}
+     */
+    const txMap = {};
+
+    for (const tx of txs) {
+        if (!txMap[tx.blockHeight]) {
+            txMap[tx.blockHeight] = [tx];
+        } else {
+            if (!txMap[tx.blockHeight].map((t) => t.txid).includes(tx.txid))
+                txMap[tx.blockHeight].push(tx);
+        }
+    }
+
+    const keys = Object.keys(txMap);
+    const res = [];
+
+    for (const i of keys.reverse()) {
+        res.push(...sortBlock(txMap[i]));
+    }
+    return res;
+}
+
+/**
+ * Sort txs that are in the same block by doing a topological sort
+ * where if a tx spends another it has an edge
+ * Based on Kahn's algorithm https://en.wikipedia.org/wiki/Topological_sorting
+ * @param {Transaction[]} txs
+ */
+export function sortBlock(txs) {
+    /**
+     * maps txid -> transactions[]
+     * where Tx.txid spends each transaction in the array
+     * @type {Map<string, Transaction[]>}
+     */
+    debugger;
+    const edges = new Map();
+    for (const tx of txs) {
+        edges.set(
+            tx.txid,
+            txs.filter((tx2) =>
+                tx.vin.map((v) => v.outpoint.txid).includes(tx2.txid)
+            )
+        );
+    }
+    /**
+     * Set of all nodes with no incoming edge
+     */
+    const s = [];
+    const hasIncomingEdges = (tx) => {
+        let found = false;
+        for (const edge of edges.values()) {
+            if (edge.includes(tx)) {
+                found = true;
+                break;
+            }
+        }
+        return found;
+    };
+    for (const tx of txs) {
+        if (!hasIncomingEdges(tx)) s.push(tx);
+    }
+    /**
+     * list that will contain the sorted nodes
+     * @type{Transaction[]}
+     */
+    const l = [];
+    while (s.length) {
+        const node = s.pop();
+        l.push(node);
+        const others = edges.get(node.txid);
+        edges.delete(node.txid);
+        for (const other of others) {
+            if (!hasIncomingEdges(other)) {
+                s.push(other);
+            }
+        }
+    }
+    console.log(edges);
+    if (edges.size) throw new Error('Cyclic graph');
+    return l;
 }
