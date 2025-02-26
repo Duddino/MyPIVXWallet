@@ -22,7 +22,7 @@ import {
     reverseAndSwapEndianess,
     sleep,
 } from './utils.js';
-import { strHardwareName } from './ledger.js';
+import { LedgerController } from './ledger.js';
 import { OutpointState, Mempool } from './mempool.js';
 import { getEventEmitter } from './event_bus.js';
 import { lockableFunction } from './lock.js';
@@ -1461,6 +1461,10 @@ export class Wallet {
         return this.#mempool.getColdBalance(blockCount);
     }
 
+    get immatureColdBalance() {
+        return this.#mempool.getImmatureColdBalance(blockCount);
+    }
+
     /**
      * Utility function to get the UTXO from an outpoint
      * @param {COutpoint} outpoint
@@ -1596,6 +1600,8 @@ export async function getNewAddress({
 }
 
 function createAddressConfirmation(address) {
-    return `${translation.popupHardwareAddrCheck} ${strHardwareName}.
+    return `${
+        translation.popupHardwareAddrCheck
+    } ${LedgerController.getInstance().getHardwareName()}.
               <div class="seed-phrase">${address}</div>`;
 }

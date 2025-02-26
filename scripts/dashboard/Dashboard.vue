@@ -30,7 +30,7 @@ import {
     isStandardAddress,
 } from '../misc.js';
 import { getNetwork } from '../network/network_manager.js';
-import { strHardwareName } from '../ledger';
+import { LedgerController } from '../ledger';
 import { guiAddContactPrompt } from '../contacts-book';
 import { scanQRCode } from '../scanner';
 import { useWallet } from '../composables/use_wallet.js';
@@ -117,7 +117,10 @@ async function importWallet({
         createAlert(
             'info',
             tr(ALERTS.WALLET_HARDWARE_WALLET, [
-                { hardwareWallet: strHardwareName },
+                {
+                    hardwareWallet:
+                        LedgerController.getInstance().getHardwareName(),
+                },
             ]),
             12500
         );
@@ -435,6 +438,7 @@ const {
     shieldBalance,
     pendingShieldBalance,
     immatureBalance,
+    immatureColdBalance,
     currency,
     price,
     isViewOnly,
@@ -957,6 +961,7 @@ defineExpose({
                         :shieldBalance="shieldBalance"
                         :pendingShieldBalance="pendingShieldBalance"
                         :immatureBalance="immatureBalance"
+                        :immatureColdBalance="immatureColdBalance"
                         :isHdWallet="wallet.isHD"
                         :isViewOnly="wallet.isViewOnly"
                         :isEncrypted="wallet.isEncrypted"

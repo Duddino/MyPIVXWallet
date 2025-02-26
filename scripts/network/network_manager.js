@@ -65,9 +65,10 @@ class NetworkManager {
      * seamlessly attempt the same call on multiple other instances until success.
      * @param {string} funcName - The function to re-attempt with
      * @param {boolean} isRPC - Whether to begin with the selected explorer or RPC node
+     * @param {number} retryTimeout - How long we should wait before retrying in milliseconds
      * @param  {...any} args - The arguments to pass to the function
      */
-    async #retryWrapper(funcName, isRPC, ...args) {
+    async #retryWrapper(funcName, isRPC, retryTimeout = 0, ...args) {
         let nMaxTries = this.#networks.length;
         let attemptNet = isRPC ? this.#currentNode : this.#currentExplorer;
 
@@ -99,6 +100,7 @@ class NetworkManager {
                 if (!fAutoSwitch || attempts === nMaxTries) {
                     throw error;
                 }
+                await sleep(retryTimeout);
                 attemptNet = this.#networks[(i + attempts) % nMaxTries];
             }
         }
@@ -118,7 +120,7 @@ class NetworkManager {
         while (trials < maxTrials) {
             trials += 1;
             try {
-                return await this.#retryWrapper(funcName, isRPC, ...args);
+                return await this.#retryWrapper(funcName, isRPC, 0, ...args);
             } catch (e) {
                 debugLog(
                     DebugTopics.NET,
@@ -145,23 +147,23 @@ class NetworkManager {
     }
 
     async getUTXOs(strAddress) {
-        return await this.#retryWrapper('getUTXOs', false, strAddress);
+        return await this.#retryWrapper('getUTXOs', false, 0, strAddress);
     }
 
     async getXPubInfo(strXPUB) {
-        return await this.#retryWrapper('getXPubInfo', false, strXPUB);
+        return await this.#retryWrapper('getXPubInfo', false, 0, strXPUB);
     }
 
     async getShieldBlockList() {
-        return await this.#retryWrapper('getShieldBlockList', true);
+        return await this.#retryWrapper('getShieldBlockList', true, 0);
     }
 
     async getBlockCount() {
-        return await this.#retryWrapper('getBlockCount', true);
+        return await this.#retryWrapper('getBlockCount', true, 0);
     }
 
     async getBestBlockHash() {
-        return await this.#retryWrapper('getBestBlockHash', true);
+        return await this.#retryWrapper('getBestBlockHash', true, 0);
     }
 
     async sendTransaction(hex) {
@@ -169,6 +171,7 @@ class NetworkManager {
             const data = await this.#retryWrapper(
                 'sendTransaction',
                 false,
+                0,
                 hex
             );
 
@@ -185,7 +188,7 @@ class NetworkManager {
     }
 
     async getTxInfo(txHash) {
-        return await this.#retryWrapper('getTxInfo', false, txHash);
+        return await this.#retryWrapper('getTxInfo', false, 0, txHash);
     }
 
     /**
@@ -196,25 +199,31 @@ class NetworkManager {
         return await this.#retryWrapper(
             'getMasternodeInfo',
             true,
+            0,
             collateralTxId,
             outidx
         );
     }
 
     async getMasternodeCount() {
-        return await this.#retryWrapper('getMasternodeCount', true);
+        return await this.#retryWrapper('getMasternodeCount', true, 0);
     }
 
     async getNextSuperblock() {
-        return await this.#retryWrapper('getNextSuperblock', true);
+        return await this.#retryWrapper('getNextSuperblock', true, 0);
     }
 
     async startMasternode(broadcastMsg) {
-        return await this.#retryWrapper('startMasternode', true, broadcastMsg);
+        return await this.#retryWrapper(
+            'startMasternode',
+            true,
+            0,
+            broadcastMsg
+        );
     }
 
     async getProposals() {
-        return await this.#retryWrapper('getProposals', true);
+        return await this.#retryWrapper('getProposals', true, 0);
     }
 
     /**
@@ -227,6 +236,7 @@ class NetworkManager {
         return await this.#retryWrapper(
             'getProposalVote',
             true,
+            0,
             proposalName,
             collateralTxId,
             outidx
@@ -252,6 +262,7 @@ class NetworkManager {
         return await this.#retryWrapper(
             'voteProposal',
             true,
+            0,
             collateralTxId,
             outidx,
             hash,
@@ -262,15 +273,15 @@ class NetworkManager {
     }
 
     async getShieldData(initialBlock = 0) {
-        return await this.#retryWrapper('getShieldData', true, initialBlock);
+        return await this.#retryWrapper('getShieldData', true, 0, initialBlock);
     }
 
     async getSaplingOutput() {
-        return await this.#retryWrapper('getSaplingOutput', true);
+        return await this.#retryWrapper('getSaplingOutput', true, 0);
     }
 
     async getSaplingSpend() {
-        return await this.#retryWrapper('getSaplingSpend', true);
+        return await this.#retryWrapper('getSaplingSpend', true, 0);
     }
 
     /**
@@ -293,7 +304,7 @@ class NetworkManager {
         monthlyPayment,
         txid,
     }) {
-        return await this.#retryWrapper('submitProposal', true, {
+        return await this.#retryWrapper('submitProposal', true, 2000, {
             name,
             url,
             nPayments,

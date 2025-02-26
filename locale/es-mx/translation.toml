@@ -212,6 +212,9 @@ pivxSync = "" # PIVX node initial sync
 pivxSyncBodyRow1 = "" # The PIVX node is syncing. Please wait until it's done. This can take up to a number of hours.
 pivxSyncBodyRow2 = "" # You can access the light version of the wallet on https://app.mypivxwallet.org/
 indexSyncBodyRow1 = "" # Importing transaction to the index... This should take a couple more minutes...
+deleteProposal = "" # Delete Proposal
+deleteProposalBody = "" # Are you sure you want to delete your proposal? Your collateral will be permanently lost.
+immatureRewards = "" # Part of your staked balance may be locked for 100 blocks as your reward matures.
 
 [ALERTS]
 INTERNAL_ERROR = "Error interno, vuelve a intentarlo más tarde" # Internal error, please try again later
@@ -322,3 +325,4 @@ MISSING_SHIELD = "" # Shield is not enabled in this wallet!
 MN_START_FAILED = "" # <b>Masternode failed to start!</b>
 MN_RESTART_FAILED = "" # <b>Masternode failed to restart!</b>
 MN_UNLOCK_WALLET = "" # Please import your <b> COLLATERAL WALLET</b> first.
+LEDGER_TX_TOO_BIG = "" # Transaction length exceeds 9000 bytes
