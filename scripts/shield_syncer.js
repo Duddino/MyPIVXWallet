@@ -34,8 +34,6 @@ export class NetworkShieldSyncer extends ShieldSyncer {
         const blockArray = [];
         const blockCount = await this.#network.getBlockCount();
         let tries = 0;
-        console.log(this.#lastSyncedBlock);
-        console.log(blockCount);
 
         while (true) {
             this.#lastSyncedBlock += 1;
@@ -57,7 +55,6 @@ export class NetworkShieldSyncer extends ShieldSyncer {
                 break;
             }
         }
-        console.log(blockArray);
         if (blockArray.length === 0) return null;
 
         return blockArray;

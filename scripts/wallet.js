@@ -912,7 +912,6 @@ export class Wallet {
             while (true) {
                 const blocks = await shieldSyncer.getNextBlocks();
                 if (blocks === null) break;
-                console.log(blocks);
                 await handleAllBlocks(blocks);
             }
             debugLog(
