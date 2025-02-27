@@ -2,12 +2,87 @@ import { Reader } from './reader.js';
 import { bytesToNum } from './encoding.js';
 import { bytesToHex } from './utils.js';
 import { Transaction } from './transaction.js';
+import { invoke } from '@tauri-apps/api';
 
 class ShieldSyncer {
     /**
      * @returns {Block[] | null} Array of blocks or null if finished
      */
     getNextBlocks() {}
+}
+
+export class NetworkShieldSyncer extends ShieldSyncer {
+    /**
+     * @type {import('./network/network.js').Network}
+     */
+    #network;
+    /**
+     * @type{number}
+     */
+    #lastSyncedBlock;
+    #totalBlocks;
+    #firstSyncedBlock;
+
+    constructor() {
+        super();
+
+        if (new.target !== NetworkShieldSyncer)
+            throw new Error('Call create instead');
+    }
+
+    async getNextBlocks() {
+        const blockArray = [];
+        const blockCount = await this.#network.getBlockCount();
+        let tries = 0;
+        console.log(this.#lastSyncedBlock);
+        console.log(blockCount);
+
+        while (true) {
+            this.#lastSyncedBlock += 1;
+            if (this.#lastSyncedBlock > blockCount) break;
+            const block = await this.#network.getBlock(this.#lastSyncedBlock);
+            if (block.tx && block.tx.length > 0)
+                blockArray.push({
+                    time: block.mediantime,
+                    height: this.#lastSyncedBlock - 1,
+                    txs: block.tx.map((tx) => {
+                        return {
+                            hex: tx.hex,
+                            txid: tx.txid,
+                        };
+                    }),
+                });
+            tries++;
+            if (blockArray.length > 100 || tries > 200) {
+                break;
+            }
+        }
+        console.log(blockArray);
+        if (blockArray.length === 0) return null;
+
+        return blockArray;
+    }
+
+    /**
+     * @param {import('./network/network.js').Network} network
+     * @returns {Promise<NetworkShieldSyncer>}
+     */
+    static async create(network, lastSyncedBlock) {
+        const syncer = new NetworkShieldSyncer();
+        syncer.#network = network;
+        syncer.#lastSyncedBlock = lastSyncedBlock + 1;
+        syncer.#firstSyncedBlock = lastSyncedBlock;
+        syncer.#totalBlocks = await network.getBlockCount();
+        return syncer;
+    }
+
+    getLength() {
+        return this.#totalBlocks - this.#firstSyncedBlock;
+    }
+
+    getReadBytes() {
+        return this.#lastSyncedBlock - this.#firstSyncedBlock;
+    }
 }
 
 export class BinaryShieldSyncer extends ShieldSyncer {

@@ -135,7 +135,7 @@ class NetworkManager {
     }
 
     async getBlock(blockHeight) {
-        return await this.#safeFetch('getBlock', true, blockHeight);
+        return await this.#safeFetch('getBlock', false, blockHeight);
     }
 
     async getTxPage(nStartHeight, addr, n) {

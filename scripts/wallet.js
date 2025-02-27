@@ -48,7 +48,7 @@ import {
 } from './debug.js';
 import { OrderedArray } from './ordered_array.js';
 import { SaplingParams } from './sapling_params.js';
-import { BinaryShieldSyncer } from './shield_syncer.js';
+import { BinaryShieldSyncer, NetworkShieldSyncer } from './shield_syncer.js';
 
 /**
  * Class Wallet, at the moment it is just a "realization" of Masterkey with a given nAccount
@@ -861,12 +861,12 @@ export class Wallet {
 
         try {
             const network = getNetwork();
-            const shieldSyncer = await BinaryShieldSyncer.create(
+            const shieldSyncer = await NetworkShieldSyncer.create(
                 network,
                 this.#shield.getLastSyncedBlock()
             );
 
-            /** @type{string[]} Array of txs in the current block */
+            /** @type{number} Total length of the sync */
             const length = shieldSyncer.getLength();
             /** @type {Uint8Array} Array of bytes that we are processing **/
             getEventEmitter().emit(
@@ -912,6 +912,7 @@ export class Wallet {
             while (true) {
                 const blocks = await shieldSyncer.getNextBlocks();
                 if (blocks === null) break;
+                console.log(blocks);
                 await handleAllBlocks(blocks);
             }
             debugLog(
