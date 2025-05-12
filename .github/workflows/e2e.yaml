@@ -39,6 +39,10 @@ jobs:
           cypress/fixtures/init_fixtures.sh
       - name: Set up Node.js
         uses: actions/setup-node@v4
+      - name: Download firefox
+        run: |
+          sudo apt update && sudo apt upgrade
+          sudo apt install firefox
 
       - name: Install Node.js dependencies
         run: |
