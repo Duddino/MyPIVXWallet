@@ -33,6 +33,13 @@ jobs:
           lfs: 'false'
           ref: ${{ github.event.pull_request.head.ref }}
           repository: ${{ github.event.pull_request.head.repo.full_name }}
+      - name: log
+        env:
+          A: ${{ github.event.pull_request.head.ref }}
+          B: ${{ github.event.pull_request.head.repo.full_name }}
+        run: |
+          echo $A
+          echo $B
       - name: Fetch lfs
         env:
           LFS_USERNAME: 'Duddino'
