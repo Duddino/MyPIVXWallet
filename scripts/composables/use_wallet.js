@@ -84,7 +84,7 @@ export const useWallet = defineStore('wallet', () => {
         pendingShieldBalance.value = await wallet.getPendingShieldBalance();
         isSynced.value = wallet.isSynced;
     };
-    getEventEmitter().on('shield-loaded-from-disk', () => {
+    wallet.onShieldLoadedFromDisk(() => {
         hasShield.value = wallet.hasShield();
     });
     const createAndSendTransaction = lockableFunction(
@@ -157,6 +157,16 @@ export const useWallet = defineStore('wallet', () => {
     const lockCoin = (out) => wallet.lockCoin(out);
     const unlockCoin = (out) => wallet.unlockCoin(out);
 
+    const historicalTxs = ref([]);
+
+    getEventEmitter().on('sync-status', (status) => {
+        if (status === 'stop') {
+            historicalTxs.value = wallet.getHistoricalTxs();
+        }
+    });
+    wallet.onNewTx(() => {
+        historicalTxs.value = [...wallet.getHistoricalTxs()];
+    });
     getEventEmitter().on('toggle-network', async () => {
         isEncrypted.value = await hasEncryptedWallet();
         blockCount.value = rawBlockCount;
@@ -164,9 +174,10 @@ export const useWallet = defineStore('wallet', () => {
 
     getEventEmitter().on('wallet-import', async () => {
         publicMode.value = fPublicMode;
+        historicalTxs.value = [];
     });
 
-    getEventEmitter().on('balance-update', async () => {
+    wallet.onBalanceUpdate(async () => {
         balance.value = wallet.balance;
         immatureBalance.value = wallet.immatureBalance;
         immatureColdBalance.value = wallet.immatureColdBalance;
@@ -182,6 +193,22 @@ export const useWallet = defineStore('wallet', () => {
     getEventEmitter().on('new-block', () => {
         blockCount.value = rawBlockCount;
     });
+
+    const onNewTx = (fun) => {
+        return wallet.onNewTx(fun);
+    };
+
+    const onTransparentSyncStatusUpdate = (fun) => {
+        return wallet.onTransparentSyncStatusUpdate(fun);
+    };
+
+    const onShieldSyncStatusUpdate = (fun) => {
+        return wallet.onShieldSyncStatusUpdate(fun);
+    };
+
+    const onShieldTransactionCreationUpdate = (fun) => {
+        return wallet.onShieldTransactionCreationUpdate(fun);
+    };
 
     return {
         publicMode,
@@ -203,6 +230,7 @@ export const useWallet = defineStore('wallet', () => {
             wallet.wipePrivateData();
             isViewOnly.value = wallet.isViewOnly();
         },
+        isOwnAddress: () => wallet.isOwnAddress(),
         isCreatingTransaction,
         isHD,
         balance,
@@ -221,5 +249,10 @@ export const useWallet = defineStore('wallet', () => {
         blockCount,
         lockCoin,
         unlockCoin,
+        historicalTxs,
+        onNewTx,
+        onTransparentSyncStatusUpdate,
+        onShieldSyncStatusUpdate,
+        onShieldTransactionCreationUpdate,
     };
 });

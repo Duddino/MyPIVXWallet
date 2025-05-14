@@ -44,7 +44,6 @@ import { Account } from '../accounts';
 import { useAlerts } from '../composables/use_alerts.js';
 const { createAlert } = useAlerts();
 const wallet = useWallet();
-const activity = ref(null);
 
 const needsToEncrypt = computed(() => {
     if (wallet.isHardwareWallet) {
@@ -395,8 +394,6 @@ async function importFromDatabase() {
     const database = await Database.getInstance();
     const account = await database.getAccount();
     await wallet.setMasterKey({ mk: null });
-    activity.value?.reset();
-    getEventEmitter().emit('reset-activity');
     if (account?.isHardware) {
         await importWallet({ type: 'hardware', secret: account.publicKey });
     } else if (wallet.isEncrypted) {
@@ -449,14 +446,6 @@ const {
     hasShield,
 } = storeToRefs(wallet);
 
-getEventEmitter().on('sync-status', (status) => {
-    if (status === 'stop') activity?.value?.update();
-});
-
-getEventEmitter().on('new-tx', () => {
-    activity?.value?.update();
-});
-
 function changePassword() {
     showEncryptModal.value = true;
 }
@@ -471,10 +460,11 @@ async function openSendQRScanner() {
             showTransferMenu.value = true;
             return;
         }
-        const cBIP32Req = parseBIP21Request(data);
-        if (cBIP32Req) {
-            transferAddress.value = cBIP32Req.address;
-            transferAmount.value = cBIP32Req.amount ?? 0;
+        const cBIP21Req = parseBIP21Request(data);
+        if (cBIP21Req) {
+            transferAddress.value = cBIP21Req.address;
+            transferDescription.value = cBIP21Req.options?.label ?? '';
+            transferAmount.value = cBIP21Req.options?.amount ?? 0;
             showTransferMenu.value = true;
             return;
         }
@@ -545,23 +535,28 @@ defineExpose({
                             </span>
                         </div>
                         <div class="messMessage" id="publicPrivateText">
-                            <span class="messTop"
-                                >Now in
-                                <span
-                                    v-html="
-                                        wallet.publicMode ? 'Public' : 'Private'
-                                    "
-                                ></span>
-                                Mode</span
-                            >
-                            <span class="messBot"
-                                >Switch to
-                                <span
-                                    v-html="
-                                        wallet.publicMode ? 'Private' : 'Public'
-                                    "
-                                ></span
-                            ></span>
+                            <span class="messTop">
+                                {{
+                                    tr(translation.currentMode, [
+                                        {
+                                            mode: wallet.publicMode
+                                                ? translation.publicMode
+                                                : translation.privateMode,
+                                        },
+                                    ])
+                                }}
+                            </span>
+                            <span class="messBot">
+                                {{
+                                    tr(translation.switchTo, [
+                                        {
+                                            mode: wallet.publicMode
+                                                ? translation.privateMode
+                                                : translation.publicMode,
+                                        },
+                                    ])
+                                }}
+                            </span>
                         </div>
                     </div>
                 </center>
@@ -985,7 +980,6 @@ defineExpose({
                     />
                     <WalletButtons class="col-12 p-0 md-5" />
                     <Activity
-                        ref="activity"
                         class="col-12 p-0 mb-5"
                         title="Activity"
                         :rewards="false"
