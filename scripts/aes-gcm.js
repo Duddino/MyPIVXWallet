@@ -1,7 +1,7 @@
 import { debugError, DebugTopics } from './debug.js';
 
 const buff_to_base64 = (buff) => btoa(String.fromCharCode.apply(null, buff));
-
+//
 const base64_to_buf = (b64) =>
     Uint8Array.from(atob(b64), (c) => c.charCodeAt(null));
 
