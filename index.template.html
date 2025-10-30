@@ -39,38 +39,41 @@
   </head>
 
   <body>
-    <div id="page-container">
+      <input class="hide-element" type="text" id="clipboard">
+    <div id="page-container" class="background-public">
       <div class="home-hero-dark gradientBackground"></div>
       <div id="page-container-light" class="home-hero gradientBackground" style="opacity:1;"></div>
       <div id="content-wrap">
         <!-- NAVBAR -->
         <nav class="navbar navbar-expand-lg sticky-top navbar-dark navbarSpecial" style="z-index: 2001;" id="navbar">
-          <div class="container">
+          <div class="container" style="position:relative">
             <img onclick="MPW.openTab(event, 'keypair')" style="cursor: pointer;" class="nav-logo navbar-brand noselect" alt="PIVX" id="mpw-main-logo" />
 
-
-            <ul class="navbar-nav small-dark-bg navBarActions showMenuMobile">
-              <li class="nav-item">
-                <span class="nav-link ptr collapsed" id="navbarToggler" style="width:33px" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></span>
-              </li>
-            </ul>
-            
-            <div class="collapse navbar-collapse noselect" id="navbarNav">
-              <!-- MAIN NAVBAR -->
-              <div class="nav-centered">
-                <ul class="navbar-nav">
-                  <li class="nav-item"><span id="dashboard" class="nav-link tablinks" onclick="MPW.openTab(event, 'keypair')" data-i18n="navDashboard">Dashboard</span></li>
-                  <li class="nav-item"><span id="stakeTab" class="nav-link tablinks" onclick="MPW.openTab(event, 'StakingTab')" data-i18n="navStake">Stake</span></li>
-                  <li class="nav-item"><span id="masternodeTab" class="nav-link tablinks" onclick="MPW.openTab(event, 'Masternode')" data-i18n="navMasternode">Masternode</span></li>
-                  <li class="nav-item"><span id="governanceTab" class="nav-link tablinks" onclick="MPW.openTab(event, 'Governance')" data-i18n="navGovernance">Governance</span></li>
-                  <li class="nav-item"><span class="nav-link tablinks" onclick="MPW.openTab(event, 'Settings');" data-i18n="navSettings">Settings</span></li>
-                </ul>
-              </div>
+            <div class="newNavBar collapse" id="navbarNav">
+              <ul class="navbar-nav">
+                <li class="nav-item"><span id="dashboard" class="nav-link tablinks" onclick="MPW.openTab(event, 'keypair')" data-i18n="navDashboard">Dashboard</span></li>
+                <li class="nav-item"><span id="stakeTab" class="nav-link tablinks" onclick="MPW.openTab(event, 'StakingTab')" data-i18n="navStake">Stake</span></li>
+                <li class="nav-item"><span id="masternodeTab" class="nav-link tablinks" onclick="MPW.openTab(event, 'Masternode')" data-i18n="navMasternode">Masternode</span></li>
+                <li class="nav-item"><span id="governanceTab" class="nav-link tablinks" onclick="MPW.openTab(event, 'Governance')" data-i18n="navGovernance">Governance</span></li>
+                <li class="nav-item"><span class="nav-link tablinks" onclick="MPW.openTab(event, 'Settings');" data-i18n="navSettings">Settings</span></li>
+              </ul>
 
               <!-- SIDE NAVBAR -->
-              <div id="SideNavbar">
+              <div id="SideNavbar" class="d-none">
               </div>
             </div>
+
+            <div style="display: flex;">
+              <!-- MULTIWALLET NAVBAR -->
+              <div id="MultiWallet"></div>
+
+              <ul class="navbar-nav small-dark-bg navBarActions showMenuMobile">
+                <li class="nav-item">
+                  <span class="nav-link ptr collapsed" id="navbarToggler" style="width:33px" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></span>
+                </li>
+              </ul>
+            </div>
+            
           </div>
         </nav>
         <!-- // NAVBAR -->
@@ -209,11 +212,6 @@
 
                       <br />
 
-                      <div class="custom-control custom-switch" style="margin-bottom:15px;">
-                        <input type="checkbox" class="custom-control-input" id="autoSwitchToggler" onclick="MPW.toggleAutoSwitch()">
-                        <label data-i18n="settingsAutoSelectNet" class="custom-control-label" for="autoSwitchToggler">Auto-select Explorers and Nodes</label>
-                      </div>
-
                       <hr>
                       <div id="changePassword-container" class="d-none">
                         <label for="UNKNOWN" data-i18n="TODOTXT">Change your wallet's password</label>
@@ -256,8 +254,21 @@
                         <label data-i18n="settingsToggleAdvancedMode" class="custom-control-label" for="advancedModeToggler">Advanced Mode</label>
                         <p style="margin-top: 5px; color:#7C659D!important;"><i class="fa-solid fa-triangle-exclamation" style="margin-right: 5px;"></i><span data-i18n="settingsToggleAdvancedModeSubtext">This unlocks deeper functionality and customisation, but may be overwhelming and potentially dangerous for unexperienced users!</p>
                       </div>
-
-                      
+		      
+		      <div>
+			  <hr>
+			  <label for="resync-button" data-i18n="resyncWalletDesc"></label>
+			  <br>
+			  <button id="resync-button" class="pivx-button-small"
+				  style="height: 42px; width: 185px; margin: 0px; margin-top: 2px;"
+				  onclick="MPW.resync()">
+			      <span class="buttoni-text">
+				  <i class="fa-solid fa-arrows-rotate del-wallet-icon"></i>
+				  <span data-i18n="resyncWalletButton"> </span>
+			      </span>
+			  </button>
+		      </div>
+		      
                       <div id="logOut-container">
                         <hr>
 
@@ -270,9 +281,8 @@
                           </span>
                         </button>
                       </div>
-
                     </div>
-
+		    
                     <div id="settingsDisplay" class="d-none settingsContent">
                       <label for="currency" data-i18n="settingsCurrency">Choose a display currency:</label>
                       <br />
@@ -311,11 +321,11 @@
       Alert
     -->
       <div class="alertPositioning" id="Alerts"></div>
-      <footer id="foot" style="padding-bottom: 32px;">
+      <footer id="foot" style="padding-bottom: 19px;">
         <div class="footer container">
           
-          <div class="row" style="margin:0px;">
-            <div class="col-8 footFlexMob" style="color:#7C659E;">
+          <div class="row" style="margin:0px; width: 100%;">
+            <div class="col-12 col-md-8 footFlexMob" style="color:#7C659E;">
               <div class="w-50-mob">
                 <span id="version" class="ptr" onclick="MPW.renderChangelog();"></span> - © MIT <span id="copyrightYear">2024</span>
               </div>
@@ -325,7 +335,7 @@
               </div>
             </div>
 
-            <div class="col-4 footer-icons text-right">
+            <div class="col-12 col-md-4 footer-icons text-right">
               <a href="https://github.com/PIVX-Labs/MyPIVXWallet" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-github"></i></a>
               <a href="https://discord.gg/zTScGaGtgv" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-discord"></i></a>
               <a href="https://medium.com/@pivx-labs" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-medium"></i></a>

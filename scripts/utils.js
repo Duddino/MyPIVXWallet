@@ -1,9 +1,19 @@
 import { Buffer } from 'buffer';
 import { sha256 } from '@noble/hashes/sha256';
+import { computed } from 'vue';
 
 export const pubKeyHashNetworkLen = 21;
 export const pubChksum = 4;
 export const pubPrebaseLen = pubKeyHashNetworkLen + pubChksum;
+
+export function valuesToComputed(ref) {
+    return Object.fromEntries(
+        Object.keys(ref.value).map((key) => [
+            key,
+            computed(() => ref.value?.[key]),
+        ])
+    );
+}
 
 export function hexToBytes(str) {
     return Buffer.from(str, 'hex');
@@ -119,4 +129,44 @@ export function getRandomElement(arr) {
 export function getBlockbookUrl(blockbookUrl, address) {
     const urlPart = address.startsWith('xpub') ? 'xpub' : 'address';
     return `${blockbookUrl.replace(/\/$/, '')}/${urlPart}/${address}`;
+}
+
+export function timeToDate(time) {
+    // Prepare time formatting
+    const timeOptions = {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+    };
+    const dateOptions = {
+        month: 'short',
+        day: 'numeric',
+    };
+    const yearOptions = {
+        month: 'short',
+        day: 'numeric',
+        year: '2-digit',
+    };
+    // Unconfirmed Txs are simply 'Pending'
+    if (!time) return 'Pending';
+    const now = new Date();
+    const date = new Date(time * 1000);
+
+    // Check if it was today (same day, month and year)
+    const fToday =
+        date.getDate() === now.getDate() &&
+        date.getMonth() === now.getMonth() &&
+        date.getFullYear() === now.getFullYear();
+
+    // Figure out the most convenient time display for this Tx
+    if (fToday) {
+        // TXs made today are displayed by time (02:13 pm)
+        return date.toLocaleTimeString(undefined, timeOptions);
+    } else if (date.getFullYear() === now.getFullYear()) {
+        // TXs older than today are displayed by short date (18 Nov)
+        return date.toLocaleDateString(undefined, dateOptions);
+    } else {
+        // TXs in previous years are displayed by their short date and year (18 Nov 2023)
+        return date.toLocaleDateString(undefined, yearOptions);
+    }
 }

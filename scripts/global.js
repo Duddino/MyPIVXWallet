@@ -1,6 +1,6 @@
 import { TransactionBuilder } from './transaction_builder.js';
 import { ALERTS, start as i18nStart, translation } from './i18n.js';
-import { wallet, hasEncryptedWallet, Wallet } from './wallet.js';
+import { activeWallet, hasEncryptedWallet, Wallet } from './wallet.js';
 import { getNetwork } from './network/network_manager.js';
 import { start as settingsStart, strCurrency } from './settings.js';
 import { createAlert } from './alerts/alert.js';
@@ -20,6 +20,7 @@ import { cOracle } from './prices.js';
 
 import pIconCheck from '../assets/icons/icon-check.svg';
 import SideNavbar from './SideNavbar.vue';
+import MultiWallet from './dashboard/MultiWallet.vue';
 import { AsyncInterval } from './async_interval.js';
 import { useNetwork } from './composables/use_network.js';
 
@@ -43,6 +44,7 @@ createApp(Stake).use(pinia).mount('#StakingTab');
 createApp(MasternodeComponent).use(pinia).mount('#Masternode');
 createApp(Governance).use(pinia).mount('#Governance');
 createApp(SideNavbar).use(pinia).mount('#SideNavbar');
+createApp(MultiWallet).use(pinia).mount('#MultiWallet');
 createApp(Alerts).use(pinia).mount('#Alerts');
 
 export async function start() {
@@ -84,6 +86,7 @@ export async function start() {
         ),
         domRedeemCodeGiftIcon: document.getElementById('redeemCodeGiftIcon'),
         domRedeemCodeETA: document.getElementById('redeemCodeETA'),
+        domRedeemCodeResults: document.getElementById('redeemCodeResults'),
         domRedeemCodeProgress: document.getElementById('redeemCodeProgress'),
         domRedeemCodeInputBox: document.getElementById('redeemCodeInputBox'),
         domRedeemCodeInput: document.getElementById('redeemCodeInput'),
@@ -133,7 +136,6 @@ export async function start() {
         domCurrencySelect: document.getElementById('currency'),
         domExplorerSelect: document.getElementById('explorer'),
         domNodeSelect: document.getElementById('node'),
-        domAutoSwitchToggle: document.getElementById('autoSwitchToggler'),
         domTranslationSelect: document.getElementById('translation'),
         domDisplayDecimalsSlider: document.getElementById('displayDecimals'),
         domDisplayDecimalsSliderDisplay:
@@ -148,6 +150,7 @@ export async function start() {
         domAdvancedModeToggler: document.getElementById('advancedModeToggler'),
         domAutoLockModeToggler: document.getElementById('autoLockModeToggler'),
         domRedeemCameraBtn: document.getElementById('redeemCameraBtn'),
+        domPageContainer: document.getElementById('page-container'),
     };
 
     // Set Copyright year on footer
@@ -201,7 +204,11 @@ export async function start() {
     await settingsStart();
     subscribeToNetworkEvents();
     // Make sure we know the correct number of blocks
-    await refreshChainData();
+    try {
+        await refreshChainData();
+    } catch (e) {
+        createAlert('warning', translation.failedToConnect, 10_000);
+    }
     // Load the price manager
     cOracle.load();
     new AsyncInterval(async () => {
@@ -433,7 +440,7 @@ export async function accessOrImportWallet() {
 
 /** Update the log out button to match the current wallet state */
 export function updateLogOutButton() {
-    doms.domLogOutContainer.style.display = wallet.isLoaded()
+    doms.domLogOutContainer.style.display = activeWallet.isLoaded()
         ? 'block'
         : 'none';
 }
@@ -449,7 +456,7 @@ export async function sweepAddress(arrUTXOs, sweepingMasterKey, nFixedFee) {
     const txBuilder = TransactionBuilder.create().addUTXOs(arrUTXOs);
 
     const outputValue = txBuilder.valueIn - (nFixedFee || txBuilder.getFee());
-    const address = wallet.getNewChangeAddress();
+    const address = activeWallet.getNewChangeAddress();
     const tx = txBuilder
         .addOutput({
             address,
@@ -572,10 +579,21 @@ export function switchSettings(page) {
     btn.classList.add('active');
 }
 
+export async function resync() {
+    if (activeWallet.isSynced) {
+        createAlert('info', translation.resyncing);
+        await activeWallet.resync();
+    } else {
+        createAlert('warning', translation.cannotResync);
+    }
+}
+
 function errorHandler(e) {
     const message = `<b>${translation.unhandledException}</b><br>${sanitizeHTML(
         e.message || e.reason
     )}`;
+    // Don't display extension errors
+    if (e?.filename?.includes('extension')) return;
     try {
         createAlert('warning', message);
     } catch (_) {

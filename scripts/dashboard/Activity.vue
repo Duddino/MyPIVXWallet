@@ -1,7 +1,6 @@
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useNetwork } from '../composables/use_network.js';
-import { wallet } from '../wallet.js';
 import { cChainParams } from '../chain_params.js';
 import { translation } from '../i18n.js';
 import { Database } from '../database.js';
@@ -12,7 +11,11 @@ import iCheck from '../../assets/icons/icon-check.svg';
 import iHourglass from '../../assets/icons/icon-hourglass.svg';
 import { blockCount } from '../global.js';
 import { beautifyNumber } from '../misc.js';
+import TxDetails from './TxDetails.vue';
+import { useWallets } from '../composables/use_wallet';
 import TxExport from './TxExport.vue';
+import { timeToDate } from '../utils.js';
+import { storeToRefs } from 'pinia';
 
 const props = defineProps({
     title: String,
@@ -20,12 +23,14 @@ const props = defineProps({
 });
 
 const txs = ref([]);
+const selectedTx = ref(null);
 let txCount = 0;
 const updating = ref(false);
 const isHistorySynced = ref(false);
 const rewardAmount = ref(0);
 const ticker = computed(() => cChainParams.current.TICKER);
 const network = useNetwork();
+const { activeWallet } = storeToRefs(useWallets());
 function getActivityUrl(tx) {
     return network.explorerUrl + '/tx/' + tx.id;
 }
@@ -104,9 +109,10 @@ function txSelfMap(amount, shieldAmount) {
 }
 
 function updateReward() {
+    if (!activeWallet.value) return;
     if (!props.rewards) return;
     let res = 0;
-    for (const tx of wallet.getHistoricalTxs()) {
+    for (const tx of activeWallet.value.historicalTxs) {
         if (tx.type !== HistoricalTxType.STAKE) continue;
         res += tx.amount;
     }
@@ -114,13 +120,10 @@ function updateReward() {
 }
 
 async function update(txToAdd = 0) {
-    // Return if wallet is not synced yet
-    if (!wallet.isSynced) {
-        return;
-    }
-
+    if (!activeWallet.value) return;
     // Prevent the user from spamming refreshes
     if (updating.value) return;
+    isHistorySynced.value = false;
     let newTxs = [];
 
     // Set the updating animation
@@ -129,7 +132,7 @@ async function update(txToAdd = 0) {
     // If there are less than 10 txs loaded, append rather than update the list
     if (txCount < 10 && txToAdd == 0) txToAdd = 10;
 
-    const historicalTxs = wallet.getHistoricalTxs();
+    const historicalTxs = activeWallet.value.historicalTxs;
 
     let i = 0;
     let found = 0;
@@ -150,7 +153,10 @@ async function update(txToAdd = 0) {
     updating.value = false;
 }
 
-watch(translation, async () => await update());
+watch(translation, async () => {
+    await update();
+    updateReward();
+});
 
 /**
  * Parse tx to list syntax
@@ -159,50 +165,16 @@ watch(translation, async () => await update());
 async function parseTXs(arrTXs) {
     const newTxs = [];
 
-    // Prepare time formatting
-    const timeOptions = {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true,
-    };
-    const dateOptions = {
-        month: 'short',
-        day: 'numeric',
-    };
-    const yearOptions = {
-        month: 'short',
-        day: 'numeric',
-        year: '2-digit',
-    };
     const cDB = await Database.getInstance();
-    const cAccount = await cDB.getAccount();
+    const cAccount = await cDB.getAccount(activeWallet.value.getKeyToExport());
 
-    const cDate = new Date();
     for (const cTx of arrTXs) {
-        const cTxDate = new Date(cTx.time * 1000);
+        const memos = cTx.shieldReceivers
+            .map((s) => s.memo)
+            .filter((s) => s && s.length > 0);
 
         // Unconfirmed Txs are simply 'Pending'
-        let strDate = 'Pending';
-        if (cTx.blockHeight !== -1) {
-            // Check if it was today (same day, month and year)
-            const fToday =
-                cTxDate.getDate() === cDate.getDate() &&
-                cTxDate.getMonth() === cDate.getMonth() &&
-                cTxDate.getFullYear() === cDate.getFullYear();
-
-            // Figure out the most convenient time display for this Tx
-            if (fToday) {
-                // TXs made today are displayed by time (02:13 pm)
-                strDate = cTxDate.toLocaleTimeString(undefined, timeOptions);
-            } else if (cTxDate.getFullYear() === cDate.getFullYear()) {
-                // TXs older than today are displayed by short date (18 Nov)
-                strDate = cTxDate.toLocaleDateString(undefined, dateOptions);
-            } else {
-                // TXs in previous years are displayed by their short date and year (18 Nov 2023)
-                strDate = cTxDate.toLocaleDateString(undefined, yearOptions);
-            }
-        }
-
+        const strDate = timeToDate(cTx.time);
         let amountToShow = Math.abs(cTx.amount + cTx.shieldAmount);
 
         // Coinbase Transactions (rewards) require coinbaseMaturity confs
@@ -227,7 +199,10 @@ async function parseTXs(arrTXs) {
                 amountToShow = descriptor.amount;
             } else {
                 let arrAddresses = cTx.receivers
-                    .map((addr) => [wallet.isOwnAddress(addr), addr])
+                    .map((addr) => [
+                        activeWallet.value.isOwnAddress(addr),
+                        addr,
+                    ])
                     .filter(([isOwnAddress, _]) => {
                         return cTx.type === HistoricalTxType.RECEIVED
                             ? isOwnAddress
@@ -235,7 +210,9 @@ async function parseTXs(arrTXs) {
                     })
                     .map(([_, addr]) => getNameOrAddress(cAccount, addr));
                 if (cTx.type == HistoricalTxType.RECEIVED) {
-                    arrAddresses = arrAddresses.concat(cTx.shieldReceivers);
+                    arrAddresses = arrAddresses.concat(
+                        cTx.shieldReceivers.map((s) => s.recipient)
+                    );
                 }
                 who =
                     [
@@ -281,6 +258,7 @@ async function parseTXs(arrTXs) {
             confirmed: fConfirmed,
             icon,
             colour,
+            memos,
         });
     }
 
@@ -292,20 +270,13 @@ const rewardsText = computed(() => {
     return `${strBal} <span style="font-size:15px; opacity: 0.55;">${ticker.value}</span>`;
 });
 
-function reset() {
-    txs.value = [];
-    txCount = 0;
-    rewardAmount.value = 0;
-    update(0);
-}
-
-function getTxCount() {
-    return txCount;
-}
-
-onMounted(() => update());
-
-defineExpose({ update, reset, getTxCount, updateReward });
+watch(
+    () => activeWallet.value.historicalTxs,
+    async () => {
+        await update();
+        updateReward();
+    }
+);
 </script>
 
 <template>
@@ -362,7 +333,10 @@ defineExpose({ update, reset, getTxCount, updateReward });
                             </tr>
                         </thead>
                         <tbody>
-                            <tr v-for="tx in txs">
+                            <tr
+                                v-for="tx in txs"
+                                @click="tx.memos.length && (selectedTx = tx)"
+                            >
                                 <td
                                     class="align-middle pr-10px"
                                     style="font-size: 12px"
@@ -376,6 +350,7 @@ defineExpose({ update, reset, getTxCount, updateReward });
                                         :href="getActivityUrl(tx)"
                                         target="_blank"
                                         rel="noopener noreferrer"
+                                        @click.stop
                                     >
                                         <code
                                             class="wallet-code text-center active ptr"
@@ -412,6 +387,7 @@ defineExpose({ update, reset, getTxCount, updateReward });
                                 </td>
                                 <td class="text-right pr-10px align-middle">
                                     <span
+                                        v-if="!tx.memos.length"
                                         class="badge mb-0"
                                         :class="{
                                             'badge-purple': tx.confirmed,
@@ -428,6 +404,9 @@ defineExpose({ update, reset, getTxCount, updateReward });
                                             v-else
                                             v-html="iHourglass"
                                         ></span>
+                                    </span>
+                                    <span v-else>
+                                        <i class="fa-solid fa-envelope"></i>
                                     </span>
                                 </td>
                             </tr>
@@ -455,4 +434,5 @@ defineExpose({ update, reset, getTxCount, updateReward });
             </div>
         </div>
     </center>
+    <TxDetails :selectedTx="selectedTx" @close="selectedTx = null" />
 </template>

@@ -8,7 +8,7 @@ import { getNetwork } from './network/network_manager.js';
 import { scanQRCode } from './scanner.js';
 import { createAndSendTransaction } from './legacy.js';
 import { UTXO, COutpoint } from './transaction.js';
-import { wallet } from './wallet.js';
+import { activeWallet } from './wallet.js';
 import { LegacyMasterKey } from './masterkey.js';
 import { deriveAddress } from './encoding.js';
 import { getP2PKHScript } from './script.js';
@@ -268,7 +268,10 @@ export async function createPromoCode(strCode, nAmount, fAddRandomness = true) {
         (a, b) => a + b.amount * COIN,
         0
     );
-    if (wallet.balance - nReservedBalance < nAmount * COIN + PROMO_FEE * 2) {
+    if (
+        activeWallet.balance - nReservedBalance <
+        nAmount * COIN + PROMO_FEE * 2
+    ) {
         return createAlert(
             'warning',
             tr(ALERTS.PROMO_NOT_ENOUGH, [
@@ -489,7 +492,7 @@ export async function updatePromoCreationTick(fRecursive = false) {
             const strAddress = deriveAddress({ pkBytes: cThread.thread.key });
 
             // Ensure the wallet is unlocked
-            if (wallet.isViewOnly()) {
+            if (activeWallet.isViewOnly()) {
                 $('#redeemCodeModal').modal('hide');
                 if (await restoreWallet(translation.walletUnlockPromo)) {
                     // Unlocked! Re-show the promo UI and continue
@@ -502,7 +505,7 @@ export async function updatePromoCreationTick(fRecursive = false) {
             }
 
             // Send the fill transaction if unlocked
-            if (!wallet.isViewOnly() || wallet.isHardwareWallet()) {
+            if (!activeWallet.isViewOnly() || activeWallet.isHardwareWallet()) {
                 const res = await createAndSendTransaction({
                     address: strAddress,
                     amount: Math.round(cThread.amount * COIN + PROMO_FEE),
@@ -624,16 +627,16 @@ export async function sweepPromoCode() {
     if (strTXID) {
         // Coins were redeemed!
         const nAmt = ((await cPromoWallet.getBalance(true)) - PROMO_FEE) / COIN;
-        doms.domRedeemCodeETA.innerHTML =
+        doms.domRedeemCodeResults.innerHTML =
             '<br><br>You redeemed <b>' +
             nAmt.toLocaleString('en-GB') +
             ' ' +
             cChainParams.current.TICKER +
             '!</b>';
-        resetRedeemPromo(15);
+        resetRedeemPromo(5);
     } else {
         // Most likely; this TX was claimed very recently and a mempool conflict occurred
-        doms.domRedeemCodeETA.innerHTML =
+        doms.domRedeemCodeResults.innerHTML =
             '<br><br>Oops, this code was valid, but someone may have claimed it seconds earlier!';
         doms.domRedeemCodeGiftIcon.classList.remove('fa-gift');
         doms.domRedeemCodeGiftIcon.classList.remove('fa-solid');
@@ -659,6 +662,7 @@ export function resetRedeemPromo(nSeconds = 5) {
     // After the specified seconds, reset the UI fully, and wipe the Promo Wallet
     setTimeout(() => {
         doms.domRedeemCodeETA.innerHTML = '';
+        doms.domRedeemCodeResults.innerHTML = '';
         doms.domRedeemCodeInputBox.style.display = '';
         doms.domRedeemCodeGiftIconBox.style.display = 'none';
         doms.domRedeemCodeGiftIcon.classList.add('fa-gift');
@@ -691,6 +695,7 @@ export async function redeemPromoCode(strCode) {
 
     // Display Progress data and Redeem Animations
     doms.domRedeemCodeETA.style.display = '';
+    doms.domRedeemCodeResults.style.display = '';
     doms.domRedeemCodeGiftIconBox.style.display = '';
     doms.domRedeemCodeGiftIcon.classList.add('fa-bounce');
 
@@ -731,11 +736,11 @@ export async function redeemPromoCode(strCode) {
             // Display if the code is Valid (has coins) or is empty
             if (nBalance > 0) {
                 doms.domRedeemCodeGiftIcon.classList.add('fa-shake');
-                doms.domRedeemCodeETA.innerHTML =
+                doms.domRedeemCodeResults.innerHTML =
                     '<br><br>This code is <b>verified!</b> Tap the gift to open it!';
                 doms.domRedeemCodeGiftIcon.classList.add('ptr');
             } else {
-                doms.domRedeemCodeETA.innerHTML =
+                doms.domRedeemCodeResults.innerHTML =
                     '<br><br>This code had no balance!';
                 doms.domRedeemCodeGiftIcon.classList.remove('fa-gift');
                 doms.domRedeemCodeGiftIcon.classList.remove('fa-solid');

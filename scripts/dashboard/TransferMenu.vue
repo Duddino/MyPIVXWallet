@@ -3,10 +3,12 @@ import { translation } from '../i18n.js';
 import { ref, watch } from 'vue';
 import { getAddressColor } from '../contacts-book';
 import { promptForContact } from '../contacts-book';
-import { sanitizeHTML } from '../misc';
+import { isShieldAddress, sanitizeHTML } from '../misc';
 import BottomPopup from '../BottomPopup.vue';
 import qrIcon from '../../assets/icons/icon-qr-code.svg';
 import addressbookIcon from '../../assets/icons/icon-address-book.svg';
+import { computed } from 'vue';
+import { createAlert } from '../alerts/alert.js';
 
 const emit = defineEmits([
     'send',
@@ -31,6 +33,9 @@ const props = defineProps({
 });
 
 const address = defineModel('address');
+const memo = ref('');
+
+const isSendingToShield = computed(() => isShieldAddress(address.value));
 
 watch(address, (value) =>
     getAddressColor(value).then((c) => (color.value = `${c} !important`))
@@ -54,13 +59,22 @@ watch(amount, () => syncAmountCurrency());
 function send() {
     // TODO: Maybe in the future do one of those cool animation that set the
     // Input red
-    if (address.value && amount.value)
-        emit(
-            'send',
-            sanitizeHTML(address.value),
-            amount.value,
-            !props.publicMode
-        );
+    if (!address.value) {
+        createAlert('warning', translation.transactionNeedsAddress, 5000);
+        return;
+    }
+    if (!amount.value) {
+        createAlert('warning', translation.transactionNeedsAmount, 5000);
+        return;
+    }
+
+    emit(
+        'send',
+        sanitizeHTML(address.value),
+        amount.value,
+        !props.publicMode,
+        memo.value
+    );
 }
 
 function syncAmountCurrency() {
@@ -232,12 +246,15 @@ async function selectContact() {
                 </div>
             </div>
 
-            <div v-if="!publicMode && false">
-                <label>SHIELD Message</label><br />
+            <div v-if="isSendingToShield">
+                <label>{{ translation.shieldMessage }}</label
+                ><br />
 
                 <textarea
                     style="padding-top: 11px; height: 110px"
-                    placeholder="Max. 512 characters"
+                    v-model="memo"
+                    :maxlength="512"
+                    :placeholder="translation.shieldMessageDesc"
                 ></textarea>
             </div>
 
@@ -281,7 +298,7 @@ async function selectContact() {
                             data-testid="closeButton"
                         >
                             <span class="buttoni-text">
-                                {{ translation.cancel }} Cancel
+                                {{ translation.cancel }}
                             </span>
                         </button>
                     </div>

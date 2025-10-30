@@ -1,7 +1,6 @@
 import { ExplorerNetwork, RPCNodeNetwork } from './network.js';
 import { TauriNetwork } from './tauri_network.js';
 import { cChainParams } from '../chain_params.js';
-import { fAutoSwitch } from '../settings.js';
 import { debugLog, DebugTopics, debugWarn } from '../debug.js';
 import { sleep } from '../utils.js';
 import { getEventEmitter } from '../event_bus.js';
@@ -96,8 +95,8 @@ class NetworkManager {
                         ' with error ' +
                         error
                 );
-                // If allowed, switch instances
-                if (!fAutoSwitch || attempts === nMaxTries) {
+                // Switch instances
+                if (attempts === nMaxTries) {
                     throw error;
                 }
                 await sleep(retryTimeout);
@@ -274,6 +273,16 @@ class NetworkManager {
 
     async getShieldData(initialBlock = 0) {
         return await this.#retryWrapper('getShieldData', true, 0, initialBlock);
+    }
+
+    async getShieldDataLength(startBlock, endBlock) {
+        return await this.#retryWrapper(
+            'getShieldDataLength',
+            true,
+            0,
+            startBlock,
+            endBlock
+        );
     }
 
     async getSaplingOutput() {
