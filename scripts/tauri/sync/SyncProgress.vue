@@ -1,9 +1,51 @@
 <script setup>
 import { useTauri } from '../../composables/use_tauri';
 import { translation } from '../../i18n';
+import { ref, watch } from 'vue';
 import Modal from '../../Modal.vue';
 import Loadingbar from '../../Loadingbar.vue';
+import { onMounted } from 'vue';
 const tauri = useTauri();
+
+const startingProgress = ref(0);
+const startingTime = ref();
+
+function resetRollingAverage() {
+    startingProgress.value = tauri.progress;
+    startingTime.value = new Date();
+}
+
+function eta() {
+    const elapsed = new Date() - startingTime.value;
+
+    const progress =
+        (tauri.progress - startingProgress.value) /
+        (1 - startingProgress.value);
+
+    if (progress <= 0) return '';
+    const ms = elapsed * (1 / progress - 1);
+    return `ETA ${formatDuration(ms)}`;
+}
+
+function formatDuration(ms) {
+    const totalSeconds = Math.round(ms / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    if (hours > 0) {
+        return `${hours}h ${minutes}m`;
+    } else if (minutes > 0) {
+        return `${minutes}m ${seconds}s`;
+    } else {
+        return `${seconds}s`;
+    }
+}
+
+onMounted(() => {
+    setTimeout(resetRollingAverage, 2000);
+});
+watch(() => tauri.loadingState, resetRollingAverage);
 </script>
 
 <template>
@@ -31,6 +73,7 @@ const tauri = useTauri();
                             :show="true"
                             :percentage="tauri.progress * 100"
                         />
+                        {{ eta() }}
                     </center>
                 </div>
             </template>
