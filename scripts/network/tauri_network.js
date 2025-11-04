@@ -1,5 +1,5 @@
 import { Network } from './network.js';
-import { wallet } from '../wallet.js';
+import { activeWallet } from '../wallet.js';
 import { invoke } from '@tauri-apps/api/tauri';
 import { Transaction } from '../transaction.js';
 import { HdMasterKey } from '../masterkey.js';
@@ -100,9 +100,9 @@ export class TauriNetwork extends Network {
                     const tx = this.#parseTx(...lastTx);
                     let lastIndex = Number.NEGATIVE_INFINITY;
                     for (const vout of tx.vout) {
-                        const path = wallet.getPath(vout.script);
+                        const path = activeWallet.getPath(vout.script);
                         if (!path) continue;
-                        wallet.updateHighestUsedIndex(vout);
+                        activeWallet.updateHighestUsedIndex(vout);
 
                         lastIndex = Math.max(
                             lastIndex,
@@ -132,7 +132,7 @@ export class TauriNetwork extends Network {
         const parseTx = (hex, height, time) => {
             const tx = this.#parseTx(hex, height, time);
             for (const vout of tx.vout) {
-                wallet.updateHighestUsedIndex(vout);
+                activeWallet.updateHighestUsedIndex(vout);
             }
             parsedTxs.push(tx);
             return tx;
@@ -148,9 +148,9 @@ export class TauriNetwork extends Network {
             for (let i = 0; i < parsed.vout.length; i++) {
                 const vout = parsed.vout[i];
 
-                const path = wallet.getPath(vout.script);
+                const path = activeWallet.getPath(vout.script);
                 if (!path) continue;
-                wallet.updateHighestUsedIndex(vout);
+                activeWallet.updateHighestUsedIndex(vout);
                 const tx = await invoke('explorer_get_tx_from_vin', {
                     vin: {
                         txid: parsed.txid,
