@@ -903,7 +903,7 @@ export class Wallet {
 
         try {
             const network = getNetwork();
-            const shieldSyncer = await NetworkShieldSyncer.create(
+            const shieldSyncer = await BinaryShieldSyncer.create(
                 network,
                 await Database.getInstance(),
                 this.#shield.getLastSyncedBlock()
