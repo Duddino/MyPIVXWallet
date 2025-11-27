@@ -187,7 +187,7 @@ cantShieldToExc = "Questo indirizzo non supporta i trasferimenti shield" # This 
 pivxSync = "Sincronizzazione iniziale del nodo PIVX" # PIVX node initial sync
 pivxSyncBodyRow1 = "Il nodo PIVX sta sincronizzando. Per favore aspetta finché non ha finito. Potrebbe durare alcune ore." # The PIVX node is syncing. Please wait until it's done. This can take up to a number of hours.
 pivxSyncBodyRow2 = "Puoi accedere alla versione light del wallet su https://app.mypivxwallet.org/" # You can access the light version of the wallet on https://app.mypivxwallet.org/
-indexSyncBodyRow1 = "Importanto le transazioni sull'indice... Dovrebbe metterci un altro paio di minuti..." # Importing transaction to the index... This should take a couple more minutes...
+indexSyncBodyRow1 = "Importanto le transazioni sull'indice... Dovrebbe metterci un altro paio di minuti..." # Importing transactions to the index... This should take a couple more minutes...
 settingsToggleAutoLockWallet = "Blocca il wallet automaticamente" # Auto Lock the Wallet
 saveWalletFile = "Salva il File del Wallet " # Save Wallet File
 proposalOverBudget = "Fuori Budget" # Over Budget
@@ -257,6 +257,7 @@ stop = "Stop" # Stop
 popupSeedPhraseBadNote = "<b>Questa Seed Phrase sembra non essere valida <br> (il checksum non corrisponde).<br> Potrebbe contenere un errore di battitura,</b> oppure essere stata generata in modo non convenzionale. Vuoi comunque continuare?" # <b>This Seed Phrase appears to be invalid <br> (The checksum doesn't match). <br> It might have a typo, </b> or it could’ve been created in an unusual way. Do you still want to continue?
 transactionNeedsAddress = "L'input dell'address è vuoto" # The address field is empty
 transactionNeedsAmount = "La quantità è invalida" # The amount is invalid
+checkpointDownloadRow1 = "" # Downloading checkpoint for syncing PIVX. This may take a few minutes.
 
 [ALERTS]
 INTERNAL_ERROR = "Errore interno, rirova più tardi" # Internal error, please try again later

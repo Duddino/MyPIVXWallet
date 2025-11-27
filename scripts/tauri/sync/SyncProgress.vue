@@ -5,10 +5,20 @@ import { ref, watch } from 'vue';
 import Modal from '../../Modal.vue';
 import Loadingbar from '../../Loadingbar.vue';
 import { onMounted } from 'vue';
+import { computed } from 'vue';
 const tauri = useTauri();
 
 const startingProgress = ref(0);
 const startingTime = ref();
+const description = computed(() => {
+    return (
+        [
+            translation.checkpointDownloadRow1,
+            translation.pivxSyncBodyRow1,
+            translation.indexSyncBodyRow1,
+        ][tauri.loadingState] ?? ''
+    );
+});
 
 function resetRollingAverage() {
     startingProgress.value = tauri.progress;
@@ -50,7 +60,7 @@ watch(() => tauri.loadingState, resetRollingAverage);
 
 <template>
     <Teleport to="body">
-        <Modal :show="tauri.loadingState !== 2">
+        <Modal :show="tauri.loadingState !== 3">
             <template #header>
                 <h3
                     class="modal-title"
@@ -61,11 +71,7 @@ watch(() => tauri.loadingState, resetRollingAverage);
             </template>
             <template #body>
                 <div class="syncBody">
-                    {{
-                        tauri.loadingState === 0
-                            ? translation.pivxSyncBodyRow1
-                            : translation.indexSyncBodyRow1
-                    }}
+                    {{ description }}
                     {{ '\n' }}
                     {{ translation.pivxSyncBodyRow2 }}
                     <center>
