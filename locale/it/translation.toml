@@ -258,6 +258,7 @@ popupSeedPhraseBadNote = "<b>Questa Seed Phrase sembra non essere valida <br> (i
 transactionNeedsAddress = "L'input dell'address è vuoto" # The address field is empty
 transactionNeedsAmount = "La quantità è invalida" # The amount is invalid
 checkpointDownloadRow1 = "" # Downloading checkpoint for syncing PIVX. This may take a few minutes.
+timeIsIncorrectWarning = "" # Warning: System time may be incorrect. Node syncing may not progress properly.
 
 [ALERTS]
 INTERNAL_ERROR = "Errore interno, rirova più tardi" # Internal error, please try again later

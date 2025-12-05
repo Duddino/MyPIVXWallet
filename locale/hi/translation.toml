@@ -258,6 +258,7 @@ popupSeedPhraseBadNote = "" # <b>This Seed Phrase appears to be invalid <br> (Th
 transactionNeedsAddress = "" # The address field is empty
 transactionNeedsAmount = "" # The amount is invalid
 checkpointDownloadRow1 = "" # Downloading checkpoint for syncing PIVX. This may take a few minutes.
+timeIsIncorrectWarning = "" # Warning: System time may be incorrect. Node syncing may not progress properly.
 
 [ALERTS]
 INTERNAL_ERROR = "आंतरिक त्रुटि, कृपया कुछ समय बाद पुनः प्रयास करें" # Internal error, please try again later

@@ -82,6 +82,9 @@ watch(() => tauri.loadingState, resetRollingAverage);
                         {{ eta() }}
                     </center>
                 </div>
+                <div v-if="!tauri.timeIsCorrect">
+                    {{ translation.timeIsIncorrectWarning }}
+                </div>
             </template>
         </Modal>
     </Teleport>

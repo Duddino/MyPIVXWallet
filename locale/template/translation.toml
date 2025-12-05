@@ -282,6 +282,7 @@ wroteItDown = "Wrote it down"
 stop = "Stop"
 transactionNeedsAddress = "The address field is empty"
 transactionNeedsAmount = "The amount is invalid"
+timeIsIncorrectWarning = "Warning: System time may be incorrect. Node syncing may not progress properly."
 
 
 [ALERTS]

@@ -2,6 +2,8 @@ import { ref } from 'vue';
 import { defineStore } from 'pinia';
 import { invoke } from '@tauri-apps/api';
 
+const MAX_TIME_OFFSET_MS = 10_000;
+
 export const useTauri = defineStore('tauri', () => {
     /**
      * 0 = Downloading Checkpoint
@@ -11,6 +13,12 @@ export const useTauri = defineStore('tauri', () => {
      */
     const loadingState = ref(0);
     const progress = ref(0.0);
+    const timeIsCorrect = ref(true);
+    (async () => {
+        timeIsCorrect.value =
+            Math.abs((await invoke('explorer_get_ntp_date')) - Date.now()) <
+            MAX_TIME_OFFSET_MS;
+    })();
 
     const interval = setInterval(async () => {
         switch (loadingState.value) {
@@ -52,5 +60,6 @@ export const useTauri = defineStore('tauri', () => {
     return {
         loadingState,
         progress,
+        timeIsCorrect,
     };
 });
