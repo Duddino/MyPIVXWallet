@@ -1,6 +1,6 @@
 import { Network } from './network.js';
 import { activeWallet } from '../wallet.js';
-import { invoke } from '@tauri-apps/api/tauri';
+import { invoke } from '@tauri-apps/api/core';
 import { Transaction } from '../transaction.js';
 import { HdMasterKey } from '../masterkey.js';
 import { MAX_ACCOUNT_GAP } from '../chain_params.js';

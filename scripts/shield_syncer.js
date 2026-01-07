@@ -2,7 +2,6 @@ import { Reader } from './reader.js';
 import { bytesToNum } from './encoding.js';
 import { bytesToHex, sleep } from './utils.js';
 import { Transaction } from './transaction.js';
-import { invoke } from '@tauri-apps/api';
 import { cChainParams } from './chain_params.js';
 
 class ShieldSyncer {
