@@ -4,6 +4,7 @@ import { cChainParams } from '../chain_params.js';
 import { debugLog, DebugTopics, debugWarn } from '../debug.js';
 import { sleep } from '../utils.js';
 import { getEventEmitter } from '../event_bus.js';
+import { invoke } from '@tauri-apps/api/core';
 
 class NetworkManager {
     /**
@@ -21,9 +22,16 @@ class NetworkManager {
      */
     #networks = [];
 
-    start() {
+    async start() {
         this.#networks = [];
-        this.#networks.push(new TauriNetwork());
+        if (await invoke('is_full_node')) {
+            this.#networks.push(new TauriNetwork());
+        } else {
+            for (let network of cChainParams.current.Explorers) {
+                this.#networks.push(new ExplorerNetwork(network.url));
+            }
+        }
+
         for (let network of cChainParams.current.Nodes) {
             this.#networks.push(new RPCNodeNetwork(network.url));
         }
@@ -41,9 +49,9 @@ class NetworkManager {
      * @param {string} strUrl - network to use
      * @param {boolean} isRPC - whether we are setting the explorer or the RPC node
      */
-    setNetwork(strUrl, isRPC) {
+    async setNetwork(strUrl, isRPC) {
         if (this.#networks.length === 0) {
-            this.start();
+            await this.start();
         }
         const found = this.#networks.find(
             (network) => network.strUrl === strUrl
