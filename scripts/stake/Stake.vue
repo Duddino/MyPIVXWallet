@@ -82,18 +82,21 @@ async function stake(value, ownerAddress) {
             pubkey: ownerAddress,
         })?.pubkey || ownerAddress;
 
-    if (isColdAddress(returnAddress)) {
-        createAlert('warning', ALERTS.INVALID_STAKE_ADDRESS, 7500);
-        return;
-    }
+    if (returnAddress) {
+        // Empty return addresses are automatically filled by MPW
+        if (isColdAddress(returnAddress)) {
+            createAlert('warning', ALERTS.INVALID_STAKE_ADDRESS, 7500);
+            return;
+        }
 
-    if (!isStandardAddress(returnAddress)) {
-        createAlert(
-            'warning',
-            tr(ALERTS.INVALID_ADDRESS, [{ address: returnAddress }]),
-            7500
-        );
-        return;
+        if (!isStandardAddress(returnAddress)) {
+            createAlert(
+                'warning',
+                tr(ALERTS.INVALID_ADDRESS, [{ address: returnAddress }]),
+                7500
+            );
+            return;
+        }
     }
 
     // Create the delegation
